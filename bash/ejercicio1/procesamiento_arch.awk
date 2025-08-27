@@ -4,7 +4,7 @@ BEGIN {
     FS="|"
 }
 
-NR > 1 {
+{
     # Se crean los arrays asociativos:
     #   suma_tiempo[(fecha, canal)]  -> suma de tiempos
     #   suma_nota[(fecha, canal)]    -> suma de notas
