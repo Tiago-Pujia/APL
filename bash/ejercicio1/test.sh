@@ -1,8 +1,17 @@
-# !/bin/bash
+#!/bin/bash
 
-# Lote 1
-cat <<EOL > encuesta_1.txt
-ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION
+# Crear entorno de prueba
+# --------------------------
+if [[ -f ./test.sh ]]; then
+    echo "Ejecutando tests..."
+fi
+
+mkdir -p test
+cd test
+
+# Crear archivos de prueba
+# --------------------------
+cat <<EOL > 2025-07-01.txt
 101|2025-07-01 10:22:33|Telefono|5.5|4
 102|2025-07-01 12:23:11|Email|120|5
 103|2025-07-01 22:34:43|Chat|2.1|3
@@ -11,9 +20,7 @@ ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION
 106|2025-07-01 16:50:11|Email|100|4
 EOL
 
-# Lote 2
-cat <<EOL > encuesta_2.txt
-ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION
+cat <<EOL > 2025-07-02.txt
 201|2025-07-02 08:10:11|Telefono|4.5|3
 202|2025-07-02 09:22:33|Email|110|5
 203|2025-07-02 11:33:44|Chat|1.8|2
@@ -21,9 +28,7 @@ ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION
 205|2025-07-02 15:40:00|Chat|2.5|3
 EOL
 
-# Lote 3
-cat <<EOL > encuesta_3.txt
-ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION
+cat <<EOL > 2025-07-03.txt
 301|2025-07-03 09:00:00|Email|130|5
 302|2025-07-03 10:20:30|Telefono|6.8|4
 303|2025-07-03 13:15:10|Chat|2.2|3
@@ -31,17 +36,21 @@ ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION
 305|2025-07-03 18:30:45|Telefono|5.5|5
 EOL
 
-echo "Archivos de prueba creados en $(pwd)\n"
+echo -e "Archivos de prueba creados en $(pwd)\n"
+cd ..
 
+# Ejecutar tests
+# --------------------------
+echo -e "\nIniciando tests con archivo de prueba..."
 
-echo -e "\nIniciando tests con archivo 1..."
-./ejercicio1.sh -d encuesta_1.txt -a test.json -p
+echo -e "\nTest 1: salida por pantalla"
+./ejercicio1.sh -d ./test -p
 
-echo -e "\nIniciando tests con archivo 2..."
-./ejercicio1.sh -d encuesta_2.txt -a test.json -p
+echo -e "\nTest 2: salida a archivo"
+./ejercicio1.sh -d ./test -a resultados.json
 
-echo -e "\nIniciando tests con archivo 3..."
-./ejercicio1.sh -d encuesta_3.txt -a test.json -p
-
-rm encuesta_1.txt encuesta_2.txt encuesta_3.txt test.json
-echo -e "\nArchivos de prueba eliminados."
+# Limpiar entorno de prueba
+# --------------------------
+rm -rf test # Eliminar el directorio de prueba
+rm -f resultados.json # Eliminar archivo de resultados si existe
+echo -e "\nEntorno de prueba eliminado."
