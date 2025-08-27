@@ -26,45 +26,66 @@ NR > 1 {
     fecha = f[1] # Me quedo con la fecha
 
     # Acumulo en arrays asociativos
-    key = fecha "|" canal
+    key = fecha "|" canal # Simulamos matriz con clave compuesta
 
     suma_tiempo[key] += tiempo
     suma_nota[key]   += nota
     cuenta[key]++
 }
 
-END { # CALCULO FINAL
-    printf "{"
+END {
+    # Variables
     sep_dia = ""
 
-    for (k in suma_tiempo) {
-        split(k, partes, "|")
+    # Abrimos el JSON raíz
+    printf "{"
+
+    # Recorremos todas las claves acumuladas (día|canal)
+    for (key in suma_tiempo) {
+        # Separamos la clave en día y canal
+        split(key, partes, "|")
         dia   = partes[1]
         canal = partes[2]
 
-        tiempo_prom = suma_tiempo[k] / cuenta[k]
-        nota_prom   = suma_nota[k] / cuenta[k]
+        # Calculamos los promedios de tiempo y nota
+        tiempo_prom = suma_tiempo[key] / cuenta[key]
+        nota_prom   = suma_nota[key] / cuenta[key]
 
+        # Si es la primera vez que encontramos este día
         if (!(dia in usado_dia)) {
-            # Si ya había otro día, cierro el anterior
+            # Si ya había un día anterior, cerramos su objeto JSON y agregamos coma
             if (sep_dia != "") {
-                printf "}"
-                printf ","
+                printf "}"   # Cierra el bloque JSON del día anterior
+                printf ","   # Agrega coma para separar días
             }
+
+            # Iniciamos un nuevo bloque JSON para este día
             printf "\"%s\":{", dia
+
+            # Marcamos que el día ya fue procesado
             usado_dia[dia] = 1
-            sep_canal[dia] = ""
-            sep_dia = ","
+
+            # Inicializamos el separador de canales para este día
+            sep_canal[dia]=""
+
+            # Activamos el separador de días para los siguientes días
+            sep_dia=","
         }
 
+        # Si ya agregamos un canal previo para este día, ponemos coma antes
         if (sep_canal[dia] != "") {
             printf ","
         }
 
+        # Imprimimos el objeto JSON para este canal con sus promedios
         printf "\"%s\":{\"tiempo_respuesta_promedio\":%.2f,\"nota_satisfaccion_promedio\":%.2f}", canal, tiempo_prom, nota_prom
+
+        # Activamos separador de canales para el próximo canal de este día
         sep_canal[dia] = ","
     }
 
+    # Cerramos el último día y el JSON raíz
     printf "}}"
 }
+
 
