@@ -1,4 +1,4 @@
-#Estado: Prototipo que solo acepta un pais y busca todo. Genera un archivo Json con todos los campos pero no hace nada.
+#Estado: Prototipo acepta varios paises y busca todo. Genera un archivo Json con todos los campos pero no hace nada.
 
 #1)Ingresar parametros (validarlos)
 #2)Usar los parametros para la API que busque y guarde en archivo cache
@@ -7,7 +7,8 @@
 
 
 #Variables
-pais="$1"
+
+for pais in $@;do
 capital=""
 region=""
 poblacion=0
@@ -17,13 +18,13 @@ moneda=""
 #que no este vacio
 if [[ -z "$pais" ]]; then
     echo "Error: Debe ingresar el nombre de un país."
-    exit 1
+    continue
 fi
 
 # Que no contenga numeros ni caracter especiales
 if ! [[ "$pais" =~ ^[a-zA-ZñÑ\s]+$ ]]; then
     echo "Error: El nombre del país solo puede contener letras y espacios."
-    exit 1
+    continue
 fi
 
 
@@ -46,3 +47,5 @@ echo "  Capital: $capital"
 echo "  Region: $region"
 echo "  Poblacion: $poblacion"
 echo "  Moneda: $moneda_nombre ($moneda_codigo)"
+
+done
