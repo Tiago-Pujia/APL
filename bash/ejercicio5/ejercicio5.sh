@@ -1,5 +1,5 @@
 #Estado: 
-    A la espera que lo testeen.
+#    A la espera que lo testeen.
 
 #Flujo de datos:
 #1)Ingresar parametros y valida que no tenga numeros ni caracter especial (excepto la ñ)
@@ -157,3 +157,4 @@ for pais in "${nombres[@]}"; do
     echo "  Moneda: $moneda_nombre ($moneda_codigo)"
     echo
 done
+
