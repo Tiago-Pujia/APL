@@ -24,11 +24,29 @@ echo -e "Archivos de prueba creados en $(pwd)\n"
 # --------------------------
 echo -e "\nIniciando tests con archivo de prueba..."
 
-echo -e "\nTest 1: " './ejercicio2.sh -m mapa_transporte.txt -s a"|"'
+echo -e "\nTest 1: " './ejercicio2.sh -m mapa_transporte.txt -s "|"'
 ./ejercicio2.sh -m mapa_transporte.txt -s "|"
 
-echo -e "\nTest 2: " './ejercicio2.sh -m mapa_transporte.txt -s "|" -h'
-./ejercicio2.sh -m mapa_transporte.txt -s "|" -h
+
+#Esta en un lugar que no deberia
+#pero no queria crear varios archivos de mapa
+cat <<EOL > mapa_transporte.txt
+0,10,0,5
+10,0,4,0
+0,4,0,8
+5,0,8,0
+EOL
+
+echo -e "\nTest 2: " './ejercicio2.sh -m mapa_transporte.txt -s "," -h'
+./ejercicio2.sh -m mapa_transporte.txt -s "," -h
+
+#Mas de lo mismo...
+cat <<EOL > mapa_transporte.txt
+0|10|0|0
+10|0|4|0
+0|4|0|0
+0|0|0|0
+EOL
 
 echo -e "\nTest 3: " './ejercicio2.sh -m mapa_transporte.txt -s "|" -c'
 ./ejercicio2.sh -m mapa_transporte.txt -s "|" -c
