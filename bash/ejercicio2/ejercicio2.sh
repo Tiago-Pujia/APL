@@ -7,15 +7,29 @@ matriz=""
 hub="false"
 camino="false"
 separador="|"
+ORIGEN=""
+DESTINO=""
 
 # Leer parámetros
 # --------------------------
-
-while getopts 'm:hcs:' opt; do
+while getopts 'm:ucs:' opt; do
     case "$opt" in
         m) matriz="$OPTARG" ;;
         u) hub="true" ;;
-        c) camino="true" ;;
+        c) 
+            camino="true"
+            # Sacar los dos próximos argumentos posicionales
+            shift $((OPTIND-1))
+            if [[ $# -lt 2 ]]; then
+                echo "Error: -c requiere 2 números (origen y destino)"
+                exit 1
+            fi
+            ORIGEN="$1"
+            DESTINO="$2"
+            # Ajustar OPTIND para que getopts siga correctamente
+            OPTIND=1
+            shift 2
+            ;;
         s) separador="$OPTARG" ;;
         \?) echo "Opción inválida"; exit 1 ;;
     esac
@@ -53,20 +67,24 @@ fi
 # --------------------------
 
 # Ejecutar el script awk para procesar los archivos en el directorio dado
-ORIGEN="A"
-DESTINO="D"
-salida=$(awk -f procesamiento_arch.awk -v FS="$separador" -v ORIGEN="$ORIGEN" -v DESTINO="$DESTINO" "$matriz")
+if [[ "$camino" = true ]]; then
 
+    #CAMBIAR procesamiento_arch.awk a dijkstra.awk
+
+    salida=$(awk -f procesamiento_arch.awk -v FS="$separador" -v ORIGEN="$ORIGEN" -v DESTINO="$DESTINO" "$matriz")
+fi
+if [[ "$hub" = true ]]; then
+    salida=$(awk -f hub.awk -v FS="$separador" "$matriz")
+fi
 echo $salida
 
 #   Cosas dignas de nombrar: 
 #
-#       - Puse el algoritmo de dijkstra en procesamiento archivo,
-#         pero talvez sería mejor darle su propio archivo awk
-#         ya que solo hace cálculo de caminos, no hub
+#       - TODO: Help, parametros largos, guardar salida en archivo,
+#               tests como la gente.
+#       
+#       - Esta hecha la logica jodida, falta pasar a un archivo
+#         y dejar las cosas prolijas  
 #
-#       - Fue bastante gpteado, costó entender como se hace el
-#         algoritmo
-#
-#       - Cambie cosas en el test, son un insulto a lo lindo en la vida,
-#         modificar mas tarde
+#       - No se como cambiar el nombre del archivo de git :)
+#         cambiar procesamiento_arch.awk a dijkstra.awk             
