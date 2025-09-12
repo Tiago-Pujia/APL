@@ -1,8 +1,5 @@
 #!/usr/bin/awk -f
 BEGIN {
-    for(i = 1 ; i <= 4 ; i++){
-        conexiones[i] = 0
-    }
     n = 0
     count = 1
 }

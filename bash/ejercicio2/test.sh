@@ -72,6 +72,22 @@ EOL
 echo -e "\nTest 5: " './ejercicio2.sh -m mapa_transporte.txt -s "|" -c 4 6'
 ./ejercicio2.sh -m mapa_transporte.txt -s "|" -c 4 6
 
+
+cat <<EOL > mapa_transporte.txt
+0|3|7|2|5|1|4|6|8|0
+3|0|6|4|7|2|5|3|1|8
+7|6|0|5|2|8|1|4|3|6
+2|4|5|0|9|3|7|2|6|1
+5|7|2|9|0|6|8|4|2|3
+1|2|8|3|6|0|5|7|4|9
+4|5|1|7|8|5|0|6|2|3
+6|3|4|2|4|7|6|0|9|5
+8|1|3|6|2|4|2|9|0|7
+0|8|6|1|3|9|3|5|7|0
+EOL
+echo -e "\nTest 6: " './ejercicio2.sh -m mapa_transporte.txt -s "|" -u'
+./ejercicio2.sh -m mapa_transporte.txt -s "|" -u
+
 # Limpiar entorno de prueba
 # --------------------------
 rm -f mapa_transporte.txt

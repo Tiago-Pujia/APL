@@ -52,8 +52,13 @@ if [[ ! -f "$matriz" ]]; then # Comprobar si el directorio existe
     exit 1
 fi
 
+if [[ "$hub" = false && "$camino" = false ]]; then
+    echo "Debe incluir -c o -u, -h para ayuda"
+    exit 1
+fi
+
 if [[ "$hub" = true && "$camino" = true ]]; then
-    echo "No puede usar -c y -h al mismo tiempo"
+    echo "No puede usar -c y -u al mismo tiempo"
     exit 1
 fi
 
@@ -66,17 +71,32 @@ fi
 # Procesar archivos
 # --------------------------
 
+salida="## Informe de análisis de red de transporte\n"
+
 # Ejecutar el script awk para procesar los archivos en el directorio dado
 if [[ "$camino" = true ]]; then
 
     #CAMBIAR procesamiento_arch.awk a dijkstra.awk
 
-    salida=$(awk -f procesamiento_arch.awk -v FS="$separador" -v ORIGEN="$ORIGEN" -v DESTINO="$DESTINO" "$matriz")
+    salida+=$(awk -f procesamiento_arch.awk -v FS="$separador" -v ORIGEN="$ORIGEN" -v DESTINO="$DESTINO" "$matriz")
 fi
 if [[ "$hub" = true ]]; then
-    salida=$(awk -f hub.awk -v FS="$separador" "$matriz")
+    salida+=$(awk -f hub.awk -v FS="$separador" "$matriz")
 fi
-echo $salida
+echo -e "$salida\n" >> informe.$matriz.md
+
+# -----------------------
+
+# salida=$(./procesamiento_arch.awk "$directorio"/* | jq '.')
+#     # 1. Ejecutar el script awk para procesar los archivos en el directorio dado
+#     # 2. Pasar la salida a jq para formatearla como JSON
+# 
+# if [[ "$pantalla" = true ]]; then
+#     echo "$salida"
+# else
+#     echo "$salida" > "$archivo"
+#     echo "Resultados guardados en $archivo"
+# fi
 
 #   Cosas dignas de nombrar: 
 #
