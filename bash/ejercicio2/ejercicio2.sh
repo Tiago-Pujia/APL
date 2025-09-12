@@ -10,33 +10,153 @@ separador="|"
 ORIGEN=""
 DESTINO=""
 
-# Leer parámetros
-# --------------------------
-while getopts 'm:ucs:' opt; do
-    case "$opt" in
-        m) matriz="$OPTARG" ;;
-        u) hub="true" ;;
-        c) 
-            camino="true"
-            # Sacar los dos próximos argumentos posicionales
-            shift $((OPTIND-1))
-            if [[ $# -lt 2 ]]; then
-                echo "Error: -c requiere 2 números (origen y destino)"
-                exit 1
-            fi
-            ORIGEN="$1"
-            DESTINO="$2"
-            # Ajustar OPTIND para que getopts siga correctamente
-            OPTIND=1
+# OPTS=$(getopt -o m:ucs:h -l matriz:,hub,camino:,separador:,help -n 'ejercicio2' -- "$@")
+
+# if [ $? != 0 ]; then
+#     echo "Error en los parámetros. Use -h o --help para ayuda."
+#     exit 1
+# fi
+
+# eval set -- "$OPTS"
+
+# while true; do
+#     case "$1" in
+#         -m|--matriz)
+#             matriz="$2"
+#             shift 2
+#             ;;
+#         -u|--hub)
+#             hub="true"
+#             shift
+#             ;;
+#         -c|--camino)
+#             camino="true"
+#             # Extraer origen y destino del siguiente argumento (formato: origen,destino)
+#             IFS=',' read -ra nodos <<< "$2"
+#             if [[ ${#nodos[@]} -ne 2 ]]; then
+#                 echo "Error: --camino requiere formato 'origen,destino'"
+#                 exit 1
+#             fi
+#             ORIGEN="${nodos[0]}"
+#             DESTINO="${nodos[1]}"
+#             shift 2
+#             ;;
+#         -s|--separador)
+#             separador="$2"
+#             shift 2
+#             ;;
+#         -h|--help)
+#             cat help.txt
+#             exit 0
+#             ;;
+#         --)
+#             shift
+#             break
+#             ;;
+#         *)
+#             echo "Opción inválida: $1"
+#             echo "Use -h o --help para ayuda."
+#             exit 1
+#             ;;
+#     esac
+# done
+
+options=$(getopt -o m:ucs:h --l matriz:,hub,camino,separador:,help -- "$@" 2> /dev/null)
+
+if [[ "$?" -ne "0" ]]; # equivale a:  if test "$?" != "0"
+then
+    echo 'Opciones incorrectas'
+    exit 1
+fi
+
+eval set -- "$options"
+while true; do
+    case "$1" in
+        -m|--matriz)
+            matriz="$2"
             shift 2
             ;;
-        s) separador="$OPTARG" ;;
-        \?) echo "Opción inválida"; exit 1 ;;
+        -u|--hub)
+            hub="true"
+            shift 
+            ;;
+        -c|--camino)
+            camino="true"
+            shift 
+            ;;
+        -s|--separador)
+            separador="$2"
+            shift 2
+            ;;
+        -h|--help)
+            #ayuda
+            cat help.txt
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Opción inválida: $1"
+            exit 1
+            ;;
     esac
 done
 
+
+# Leer parámetros
+# --------------------------
+# while getopts 'm:ucs:' opt; do
+#     case "$opt" in
+#         m) matriz="$OPTARG" ;;
+#         u) hub="true" ;;
+#         c) 
+#             camino="true"
+#             # Sacar los dos próximos argumentos posicionales
+#             shift $((OPTIND-1))
+#             if [[ $# -lt 2 ]]; then
+#                 echo "Error: -c requiere 2 números (origen y destino)"
+#                 exit 1
+#             fi
+#             ORIGEN="$1"
+#             DESTINO="$2"
+#             # Ajustar OPTIND para que getopts siga correctamente
+#             OPTIND=1
+#             shift 2
+#             ;;
+#         s) separador="$OPTARG" ;;
+#         \?) echo "Opción inválida"; exit 1 ;;
+#     esac
+# done
+
 # Validaciones
 # --------------------------
+
+if [[ "$camino" == "true" ]]; then
+    # Verificar que existan $1 y $2
+    if [[ -z "${1:-}" || -z "${2:-}" ]]; then
+        echo "Error: --camino requiere 2 números (origen y destino)."
+        exit 1
+    fi
+
+    ORIGEN="$1"
+    DESTINO="$2"
+
+    # Validación: enteros positivos
+    if ! [[ "$ORIGEN" =~ ^[0-9]+$ && "$DESTINO" =~ ^[0-9]+$ ]]; then
+        echo "Error: ORIGEN y DESTINO deben ser enteros positivos."
+        exit 1
+    fi
+
+    # Verificar que no haya un tercer argumento
+    if [[ -n "${3:-}" ]]; then
+        echo "Error: se recibieron más de 2 números para --camino."
+        exit 1
+    fi
+    shift 2  # Consumir ORIGEN y DESTINO
+fi
+
 if [[ -z "$separador" ]]; then # Comprobar cadena vacia
     echo "Debe especificar separador con -s"
     exit 1

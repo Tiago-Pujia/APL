@@ -15,7 +15,7 @@ PARÁMETROS OBLIGATORIOS
         Ruta del archivo de la matriz de adyacencia.
 
 PARÁMETROS OPCIONALES (EXCLUYENTES)
-    -h, --hub
+    -u, --hub
         Determina qué estación es el "hub" de la red (mayor número de conexiones).
         No compatible con --camino.
 

@@ -59,7 +59,7 @@ cat <<EOL > mapa_transporte.txt
 EOL
 
 echo -e "\nTest 4: " './ejercicio2.sh -m mapa_transporte.txt -s "}" -c 4 1'
-./ejercicio2.sh -m mapa_transporte.txt -s "}" -c 4 1
+./ejercicio2.sh -m mapa_transporte.txt -c 4 1 -s "}" 
 
 cat <<EOL > mapa_transporte.txt
 0|0|0|0|8|2
