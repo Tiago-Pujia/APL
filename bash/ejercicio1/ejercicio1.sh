@@ -10,12 +10,42 @@ pantalla=false
 # Leer parámetros
 # --------------------------
 
-while getopts 'd:a:p' opt; do
-    case "$opt" in
-        d) directorio="$OPTARG" ;;
-        a) archivo="$OPTARG" ;;
-        p) pantalla=true ;;
-        \?) echo "Opción inválida"; exit 1 ;;
+OPTS=$(getopt -o d:a:ph --long directorio:,archivo:,pantalla,help -n 'ejercicio1' -- "$@")
+
+if [ $? != 0 ]; then
+    echo "Error en los parámetros. Use -h o --help para ayuda."
+    exit 1
+fi
+
+eval set -- "$OPTS"
+
+while true; do
+    case "$1" in
+        -d|--directorio)
+            directorio="$2"
+            shift 2
+            ;;
+        -a|--archivo)
+            archivo="$2"
+            shift 2
+            ;;
+        -p|--pantalla)
+            pantalla=true
+            shift
+            ;;
+        -h|--help)
+            cat help.txt
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Opción inválida: $1"
+            echo "Use -h o --help para ayuda."
+            exit 1
+            ;;
     esac
 done
 
