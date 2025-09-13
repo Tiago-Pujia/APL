@@ -14,6 +14,7 @@ PARÁMETROS OBLIGATORIOS
         Ejemplo: "argentina,brasil,chile"
     -t, --ttl SEGUNDOS
         Tiempo en segundos que se guardarán los resultados en caché.
+        Ejemplo: "60"
 
 PARÁMETROS OPCIONALES
     -h, --help
@@ -33,5 +34,5 @@ NOTAS
 
 EJEMPLOS
     ./ejercicio5.sh -n argentina -t 60
-    ./ejercicio5.sh --nombre spain,france --ttl 7200
+    ./ejercicio5.sh --nombre,spain,france --ttl 7200
     ./ejercicio5.sh -n japan,canada,mexico -t 1800
