@@ -2,21 +2,20 @@ NOMBRE
     ejercicio5.sh - Buscador de información de países
 
 SINOPSIS
-    ejercicio5.sh [OPCIÓN]... -n PAÍS(ES)
+    ejercicio5.sh [OPCIÓN]... -n PAÍS(ES) -t SEGUNDOS
 
 DESCRIPCIÓN
     Consulta información de países utilizando la API REST Countries y almacena
-    los resultados en una caché con tiempo de vida (TTL) configurable.
+    los resultados en una caché con tiempo de vida (TTL) que se pasa como parametro.
 
 PARÁMETROS OBLIGATORIOS
     -n, --nombre PAÍS(ES)
         Nombre(s) de los países a buscar. Múltiples nombres se separan por comas.
         Ejemplo: "argentina,brasil,chile"
+    -t, --ttl SEGUNDOS
+        Tiempo en segundos que se guardarán los resultados en caché.
 
 PARÁMETROS OPCIONALES
-    -t, --ttl SEGUNDOS
-        Tiempo en segundos que se guardarán los resultados en caché (por defecto: 3600).
-
     -h, --help
         Muestra esta ayuda y sale.
 
@@ -33,6 +32,6 @@ NOTAS
     - Soporta búsqueda de múltiples países simultáneamente
 
 EJEMPLOS
-    ./ejercicio5.sh -n argentina
-    ./ejercicio5.sh --nombre "spain,france" --ttl 7200
-    ./ejercicio5.sh -n "japan,canada,mexico" -t 1800
+    ./ejercicio5.sh -n argentina -t 60
+    ./ejercicio5.sh --nombre spain,france --ttl 7200
+    ./ejercicio5.sh -n japan,canada,mexico -t 1800
