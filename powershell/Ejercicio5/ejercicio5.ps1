@@ -1,3 +1,5 @@
+#!/usr/bin/env pwsh
+
 #USO:
 # ./ejercicio5.ps1 -nombre 'pais1,pais2,...' -ttl segundos
 # -----------------------------<PARÁMETROS>-----------------------------
@@ -126,3 +128,4 @@ foreach ($pais in $nombres) {
     Write-Host "  Moneda: $monedaNombre ($monedaCodigo)"
     Write-Host
 }
+
