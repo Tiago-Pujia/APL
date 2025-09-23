@@ -4,7 +4,7 @@
 # ./ejercicio5.ps1 -nombre 'pais1,pais2,...' -ttl segundos
 # -----------------------------<PARÁMETROS>-----------------------------
 Param(
-    [Parameter(Mandatory=$true)] [string]$nombre,
+    [Parameter(Mandatory=$true)] [string[]]$nombre,
     [Parameter(Mandatory=$true)] [int]$ttl,
     [Parameter(Mandatory=$false)] [switch]$help
 )
@@ -128,4 +128,3 @@ foreach ($pais in $nombres) {
     Write-Host "  Moneda: $monedaNombre ($monedaCodigo)"
     Write-Host
 }
-
