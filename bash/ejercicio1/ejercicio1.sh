@@ -21,31 +21,12 @@ eval set -- "$OPTS"
 
 while true; do
     case "$1" in
-        -d|--directorio)
-            directorio="$2"
-            shift 2
-            ;;
-        -a|--archivo)
-            archivo="$2"
-            shift 2
-            ;;
-        -p|--pantalla)
-            pantalla=true
-            shift
-            ;;
-        -h|--help)
-            cat help.txt
-            exit 0
-            ;;
-        --)
-            shift
-            break
-            ;;
-        *)
-            echo "Opción inválida: $1"
-            echo "Use -h o --help para ayuda."
-            exit 1
-            ;;
+        -d|--directorio) directorio="$2"; shift 2 ;;
+        -a|--archivo)    archivo="$2";    shift 2 ;;
+        -p|--pantalla)   pantalla=true;   shift   ;;
+        -h|--help)       cat help.txt;    exit 0  ;;
+        --) shift; break ;;
+        *) echo "Opción inválida: $1"; exit 1 ;;
     esac
 done
 
@@ -67,13 +48,29 @@ if [[ -n "$archivo" && "$pantalla" = true ]]; then
     exit 1
 fi
 
-# Procesar archivos
-# --------------------------
+if [[ -z "$archivo" && "$pantalla" = false ]]; then
+    echo "Debe especificar -a o -p"
+    exit 1
+fi
 
-salida=$(./procesamiento_arch.awk "$directorio"/* | jq '.')
-    # 1. Ejecutar el script awk para procesar los archivos en el directorio dado
-    # 2. Pasar la salida a jq para formatearla como JSON
+# --- Procesar archivos ---
 
+# Expandir todos los archivos dentro del directorio
+# Esto crea un array con la lista de entradas (archivos o directorios)
+files=("$directorio"/*)
+if [ ${#files[@]} -eq 0 ]; then # Verificar si el array está vacío (no hay archivos)
+    salida="{}"
+    echo "No hay archivos en el directorio especificado"
+else # Si hay archivos, procesarlos con awk y formatear con jq
+    salida=$(./procesamiento_arch.awk "${files[@]}" | jq '.' 2>/dev/null)
+    
+    if [[ -z "$salida" ]]; then
+        salida="{}"
+        echo "Error al procesar los archivos o salida vacía"
+    fi
+fi
+
+# --- Salida ---
 if [[ "$pantalla" = true ]]; then
     echo "$salida"
 else

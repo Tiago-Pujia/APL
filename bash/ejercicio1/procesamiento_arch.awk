@@ -1,91 +1,78 @@
 #!/usr/bin/awk -f
 
+function isnumeric(x) {
+    return (x ~ /^[-+]?[0-9]*\.?[0-9]+$/)
+}
+
 BEGIN {
     FS="|"
+    errores = 0
 }
 
 {
-    # Se crean los arrays asociativos:
-    #   suma_tiempo[(fecha, canal)]  -> suma de tiempos
-    #   suma_nota[(fecha, canal)]    -> suma de notas
-    #   cuenta[(fecha, canal)]       -> cantidad de registros
-    #
-    # Para cada registro:
-    #   1. Extraer fecha, canal, tiempo y nota
-    #   2. Acumular tiempo y nota por (fecha, canal)
-    #   3. Contar cantidad de registros por (fecha, canal)
-    
-    # Variables:
+    # Validar: deben existir 5 campos
+    if (NF != 5) {
+        printf "WARNING: Formato inválido en %s linea %d: NF=%d\n", FILENAME, FNR, NF > "/dev/stderr"
+        errores++
+        next
+    }
+
     fecha = $2
     canal = $3
     tiempo = $4
     nota = $5
 
-    # Extraemos fecha (sin hora)
-    split(fecha, f, " ") # Separo fecha y hora
-    fecha = f[1] # Me quedo con la fecha
+    # Trim simples (elimina espacios al inicio/fin)
+    gsub(/^[ \t]+|[ \t]+$/, "", fecha)
+    gsub(/^[ \t]+|[ \t]+$/, "", canal)
+    gsub(/^[ \t]+|[ \t]+$/, "", tiempo)
+    gsub(/^[ \t]+|[ \t]+$/, "", nota)
 
-    # Acumulo en arrays asociativos
-    key = fecha "|" canal # Simulamos matriz con clave compuesta
+    # Validar que tiempo y nota sean numéricos
+    if (!isnumeric(tiempo) || !isnumeric(nota)) {
+        printf "WARNING: Valores no numéricos en %s linea %d: tiempo='%s' nota='%s'\n", FILENAME, FNR, tiempo, nota > "/dev/stderr"
+        errores++
+        next
+    }
 
-    suma_tiempo[key] += tiempo
-    suma_nota[key]   += nota
+    split(fecha, f, " ")
+    fecha = f[1]
+
+    key = fecha "|" canal
+    suma_tiempo[key] += (tiempo + 0)
+    suma_nota[key]   += (nota + 0)
     cuenta[key]++
 }
 
 END {
-    # Variables
-    sep_dia = ""
-
-    # Abrimos el JSON raíz
     printf "{"
+    firstDay = 1
 
-    # Recorremos todas las claves acumuladas (día|canal)
     for (key in suma_tiempo) {
-        # Separamos la clave en día y canal
         split(key, partes, "|")
-        dia   = partes[1]
+        dia = partes[1]
         canal = partes[2]
 
-        # Calculamos los promedios de tiempo y nota
         tiempo_prom = suma_tiempo[key] / cuenta[key]
         nota_prom   = suma_nota[key] / cuenta[key]
 
-        # Si es la primera vez que encontramos este día
         if (!(dia in usado_dia)) {
-            # Si ya había un día anterior, cerramos su objeto JSON y agregamos coma
-            if (sep_dia != "") {
-                printf "}"   # Cierra el bloque JSON del día anterior
-                printf ","   # Agrega coma para separar días
-            }
-
-            # Iniciamos un nuevo bloque JSON para este día
+            if (!firstDay) { printf "}," }
             printf "\"%s\":{", dia
-
-            # Marcamos que el día ya fue procesado
             usado_dia[dia] = 1
-
-            # Inicializamos el separador de canales para este día
-            sep_canal[dia]=""
-
-            # Activamos el separador de días para los siguientes días
-            sep_dia=","
+            firstDay = 0
+            sep_canal = ""
         }
 
-        # Si ya agregamos un canal previo para este día, ponemos coma antes
-        if (sep_canal[dia] != "") {
-            printf ","
-        }
-
-        # Imprimimos el objeto JSON para este canal con sus promedios
+        if (sep_canal != "") { printf "," }
         printf "\"%s\":{\"tiempo_respuesta_promedio\":%.2f,\"nota_satisfaccion_promedio\":%.2f}", canal, tiempo_prom, nota_prom
-
-        # Activamos separador de canales para el próximo canal de este día
-        sep_canal[dia] = ","
+        sep_canal = ","
     }
 
-    # Cerramos el último día y el JSON raíz
     printf "}}"
+
+    if (errores > 0) {
+        printf "\nProcesamiento finalizado con %d errores\n", errores > "/dev/stderr"
+        exit 1
+    }
 }
-
-
