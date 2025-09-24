@@ -9,15 +9,15 @@ DESCRIPCIÓN
     los resultados en una caché con tiempo de vida (TTL) que se pasa como parametro.
 
 PARÁMETROS OBLIGATORIOS
-    -n, --nombre PAÍS(ES)
+    -nombre
         Nombre(s) de los países a buscar. Múltiples nombres se separan por comas.
         Ejemplo: "argentina,brasil,chile"
-    -t, --ttl SEGUNDOS
+    -ttl
         Tiempo en segundos que se guardarán los resultados en caché.
         Ejemplo: "60"
 
 PARÁMETROS OPCIONALES
-    -h, --help
+    -h, -help
         Muestra esta ayuda y sale.
 
 INFORMACIÓN MOSTRADA
@@ -34,9 +34,9 @@ NOTAS
     - En Linux el comando debe ejecutarse poniendo pwsh antes.
 
 EJEMPLOS
-    ./ejercicio5.ps1 -n argentina -t 60
-    ./ejercicio5.ps1 -nombre spain,france -ttl 7200
-    ./ejercicio5.ps1 -n japan,canada,mexico -t 1800
+    .\ejercicio5.ps1 -nombre argentina -ttl 60
+    .\ejercicio5.ps1 -nombre spain,france -ttl 7200
+    .\ejercicio5.ps1 -nombre japan,canada,mexico -ttl 1800
     
-Linux:
-    pwsh ./ejercicio5.ps1 -nombre spain,france -ttl 7200
+    Linux:
+    pwsh .\ejercicio5.ps1 -nombre spain,france -ttl 7200

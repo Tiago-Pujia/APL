@@ -1,0 +1,40 @@
+NOMBRE
+    ejercicio2.sh - Analizador de rutas en mapa de transporte
+
+SINOPSIS
+    ejercicio2.sh [OPCIÓN]... -m ARCHIVO
+
+DESCRIPCIÓN
+    Este script analiza rutas en una red de transporte público representada como
+    una matriz de adyacencia donde los valores representan el tiempo de viaje
+    entre estaciones. Puede determinar el hub de la red o encontrar el camino
+    más corto entre estaciones usando el algoritmo de Dijkstra.
+
+PARÁMETROS OBLIGATORIOS
+    -matriz ARCHIVO
+        Ruta del archivo de la matriz de adyacencia.
+
+PARÁMETROS OPCIONALES (EXCLUYENTES)
+    -hub
+        Determina qué estación es el "hub" de la red (mayor número de conexiones).
+        No compatible con -camino.
+
+    -camino
+        Encuentra el camino más corto en tiempo entre todas las estaciones.
+        No compatible con -hub.
+
+    -separador CARÁCTER
+        Carácter utilizado como separador de columnas en la matriz (por defecto: espacio).
+
+    -h, -help
+        Muestra esta ayuda y sale.
+
+NOTAS
+    - El archivo de matriz debe ser cuadrado y simétrico con valores numéricos enteros o decimales positivos
+    - Un valor 0 indica que no hay conexión directa entre estaciones
+    - Las opciones -hub y -camino son mutuamente excluyentes
+
+EJEMPLOS
+    ./ejercicio2.sh -matriz mapa.txt -hub
+    ./ejercicio2.sh -matriz transporte.txt -camino -separador ","
+    ./ejercicio2.sh -matriz datos.csv -camino -separador ";"
