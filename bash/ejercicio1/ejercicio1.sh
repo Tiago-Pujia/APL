@@ -53,6 +53,12 @@ if [[ -z "$archivo" && "$pantalla" = false ]]; then
     exit 1
 fi
 
+# Verificar si jq está instalado
+if ! command -v jq &> /dev/null; then
+    echo "Error: 'jq' no está instalado. Es necesario para formatear la salida JSON."
+    exit 1
+fi
+
 # --- Procesar archivos ---
 
 # Expandir todos los archivos dentro del directorio
