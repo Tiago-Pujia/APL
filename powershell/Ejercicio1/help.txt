@@ -1,0 +1,37 @@
+NOMBRE
+    ejercicio1.ps1 - Procesador de encuestas de satisfacción
+
+SINOPSIS
+    ejercicio1.ps1 [-directorio <ruta>] [-archivo <archivo.json>] [-pantalla] [-h]
+
+DESCRIPCION
+    Este script procesa archivos de texto que contienen registros de encuestas de 
+    satisfacción de clientes, con formato de campos fijos separados por pipe (|). 
+    Calcula el tiempo de respuesta promedio y la nota de satisfacción promedio 
+    por canal de atención y por día. Los resultados se muestran en pantalla o 
+    se guardan en un archivo JSON.
+
+PARAMETROS
+    -directorio
+        Ruta del directorio que contiene los archivos de encuestas a procesar.
+        (Acepta rutas relativas o absolutas y rutas con espacios.)
+
+    -archivo
+        Ruta completa del archivo JSON de salida.
+
+    -pantalla
+        Muestra la salida por pantalla en formato JSON.
+
+    -h, -help
+        Muestra esta ayuda (contenido de help.txt) y sale.
+
+NOTA
+    Las opciones -archivo y -pantalla son mutuamente excluyentes.
+    El script valida que el directorio exista y que las lineas de los archivos
+    tengan el formato: ID|FECHA|CANAL|TIEMPO|NOTA
+
+EJEMPLOS
+    .\ejercicio1.ps1 -directorio .\datos -pantalla
+    .\ejercicio1.ps1 -directorio "C:\Mis Encuestas" -archivo resultado.json
+    .\ejercicio1.ps1 -h
+    Get-Help .\ejercicio1.ps1
