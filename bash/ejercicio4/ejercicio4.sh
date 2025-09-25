@@ -1,7 +1,7 @@
 #!/bin/bash
 
+#tail -f /tmp/daemon.log
 #Para visualizar el pid del deamon ejecutar en terminal: cat /tmp/daemon/daemon.pid
-# para visualizar el demon: tail -f /tmp/daemon.log
 
 LOG="/tmp/daemon.log"
 PIDFILE="/tmp/daemon/daemon.pid"
@@ -9,6 +9,7 @@ PIDFILE="/tmp/daemon/daemon.pid"
 
 
 #Ejecucion del deamon
+
 daemon() {
     while true; do
         echo "Hello World"
@@ -18,6 +19,7 @@ daemon() {
 
 #Funcion que inicia el deamon
 start(){
+    local repo="$1"
     #Con este if me aseguro que no se inicie dos veces el deamon
     if [[ -f "$PIDFILE" ]]; then
         echo "El deamon ya está corriendo."
@@ -28,33 +30,43 @@ start(){
     PID=$!
 
     echo $PID > "$PIDFILE"
-    echo "Pid del deamon: $PID" > "$PIDFILE"
+    echo "Pid del daemon: $PID"
+    echo "Usando config: $CONFIG"
 
 }
 
 
 #Funcion que detiene el deamon
-stop(){
+stop() {
     if [[ -f "$PIDFILE" ]]; then
-        kill $(cat "$PIDFILE") && rm "$PIDFILE"
-        echo "Deamon detenido."
+        PID=$(cat "$PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID" && rm "$PIDFILE"
+            echo "Daemon detenido (PID $PID)."
+        else
+            echo "No hay proceso con PID $PID, limpiando PIDFILE..."
+            rm "$PIDFILE"
+        fi
     else
-        echo "El deamon no esta corriendo."
+        echo "El daemon no está corriendo."
     fi
 }
 
 
 
 #Ingreso de parametros
-case "$1" in
-  -k|--kill)
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -c|--configuracion) CONFIG="$2"; shift 2 ;;
+
+        -k|--kill) ACTION="stop"; shift ;;
+        *) echo "Uso: $0 -c <config> [-k]"; exit 1 ;;
+    esac
+done
+
+if [[ "$ACTION" == "stop" ]]; then
     stop
-    ;;
-  "" )
-    start
-    ;;
-  *)
-    echo "Uso: $0 [-k|--kill]"
-    exit 1
-    ;;
-esac
+else
+    [[ -z "$CONFIG" ]] && { echo "Faltan parámetros obligatorios"; exit 1; }
+    start "$CONFIG"
+fi
