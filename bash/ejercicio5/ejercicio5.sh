@@ -21,12 +21,7 @@ declare -a nombres
 
 #Funcion ayuda
 ayuda(){
-    echo "Uso: $0 -n \"pais1,pais2,...\" -t segundos"
-    echo
-    echo "Opciones:"
-    echo "  -n, --nombre   Nombre(s) de los países a buscar (separados por comas)"
-    echo "  -t, --ttl      Tiempo en segundos que se guardan los resultados en caché"
-    echo "  -h, --help     Muestra esta ayuda"
+    cat help.txt
     exit 0
 }
 
