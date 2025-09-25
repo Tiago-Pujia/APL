@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 param (
-    [Parameter(Position=0)]
+    [Parameter(Position=0, Mandatory=$true)]
     [string]$directorio,
 
     [Parameter(Position=1)]
@@ -21,28 +21,35 @@ if ($help) {
         # Si no existe help.txt, mostramos la ayuda integrada
         Get-Help -Full $MyInvocation.MyCommand.Path | Out-String | Write-Output
     }
-    exit 0
+    exit [int]0
 }
 
 # Validaciones previas
-if (-not $directorio) {
-    Write-Error "Debe especificar un directorio con -directorio."
-    exit 1
-}
-
 if (-not (Test-Path $directorio -PathType Container)) {
     Write-Error "El directorio '$directorio' no existe."
-    exit 1
+    exit [int]1
 }
 
 if ($archivo -and $pantalla) {
     Write-Error "No puede usar -archivo y -pantalla al mismo tiempo."
-    exit 1
+    exit [int]1
 }
 
 if (-not $archivo -and -not $pantalla) {
     Write-Error "Debe especificar -archivo o -pantalla."
-    exit 1
+    exit [int]1
+}
+
+# Función auxiliar para formatear números:
+# - Si es entero, devuelve entero.
+# - Si es decimal, redondea a 2 decimales.
+function Format-Number {
+    param([double]$n)
+    if ($n -eq [math]::Round($n,0)) {
+        return [math]::Round($n,0)
+    } else {
+        return [math]::Round($n,2)
+    }
 }
 
 # Procesamiento seguro
@@ -75,11 +82,11 @@ try {
 
             $tiempo = 0.0
             $nota   = 0.0
-            if (-not [double]::TryParse($campos[3].Trim(), [ref]$tiempo)) {
+            if (-not [double]::TryParse($campos[3].Trim(), [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$tiempo)) {
                 Write-Warning "Tiempo inválido en $($file.Name): '$line'"
                 continue
             }
-            if (-not [double]::TryParse($campos[4].Trim(), [ref]$nota)) {
+            if (-not [double]::TryParse($campos[4].Trim(), [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$nota)) {
                 Write-Warning "Nota inválida en $($file.Name): '$line'"
                 continue
             }
@@ -103,7 +110,7 @@ try {
             $vacio | ConvertTo-Json -Depth 3 | Out-File -FilePath $archivo -Encoding utf8
             Write-Output "Resultados guardados en $archivo (vacío - no se encontraron registros válidos)"
         }
-        exit 0
+        exit [int]0
     }
 
     # Agrupar primeramente por fecha y luego por canal para construir JSON anidado
@@ -117,9 +124,12 @@ try {
             $avgTiempo = ($grupoCanal.Group | Measure-Object -Property Tiempo -Average).Average
             $avgNota   = ($grupoCanal.Group | Measure-Object -Property Nota -Average).Average
 
+            $avgTiempo = Format-Number $avgTiempo
+            $avgNota   = Format-Number $avgNota
+
             $json[$fecha][$canal] = @{
-                tiempo_respuesta_promedio  = [math]::Round($avgTiempo,2)
-                nota_satisfaccion_promedio = [math]::Round($avgNota,2)
+                tiempo_respuesta_promedio  = $avgTiempo
+                nota_satisfaccion_promedio = $avgNota
             }
         }
     }
@@ -132,7 +142,9 @@ try {
         Write-Output "Resultados guardados en $archivo"
     }
 
+    exit [int]0
+
 } catch {
     Write-Error "Ocurrió un error durante el procesamiento: $_"
-    exit 1
+    exit [int]1
 }
