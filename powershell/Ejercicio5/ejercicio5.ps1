@@ -4,20 +4,15 @@
 # ./ejercicio5.ps1 -nombre 'pais1,pais2,...' -ttl segundos
 # -----------------------------<PARÁMETROS>-----------------------------
 Param(
-    [Parameter(Mandatory=$true)] [string[]]$nombre,
-    [Parameter(Mandatory=$true)] [int]$ttl,
+    [Parameter(Mandatory=$false)] [string[]]$nombre,
+    [Parameter(Mandatory=$false)] [int]$ttl,
     [Parameter(Mandatory=$false)] [switch]$help
 )
 
 # -----------------------------<FUNCIONES>-----------------------------
 
 function mostrarAyuda {
-    Write-Host "Uso: ./ejercicio5.ps1 -Nombre 'pais1,pais2,...' -TTL segundos"
-    Write-Host
-    Write-Host "Opciones:"
-    Write-Host "  -n, --nombre   Nombre(s) de los países a buscar (separados por comas)"
-    Write-Host "  -t, --ttl      Tiempo en segundos que se guardan los resultados en caché"
-    Write-Host "  -h, --help     Muestra esta ayuda"
+    cat help.txt
     exit
 }
 
@@ -41,23 +36,23 @@ function consultarAPI ($pais) {
 #Guarda a la memoria cache
 function guardarCache($pais, $datos) {
     $ts = [int][double]::Parse((Get-Date -UFormat %s))
-    $cache = Get-Content $ArchivoCache | ConvertFrom-Json
+    $cache = Get-Content $archivoCache | ConvertFrom-Json
 
     $cache | Add-Member -NotePropertyName $pais -NotePropertyValue @{
         timestamp = $ts
         data      = $datos
     } -Force
 
-    $cache | ConvertTo-Json -Depth 10 | Set-Content $ArchivoCache -Encoding UTF8
+    $cache | ConvertTo-Json -Depth 10 | Set-Content $archivoCache -Encoding UTF8
 }
 #Consulta a la memoria cache
 function consultarCache ($pais) {
     $ahora = [int][double]::Parse((Get-Date -UFormat %s))
-    $cache = Get-Content $ArchivoCache | ConvertFrom-Json
+    $cache = Get-Content $archivoCache | ConvertFrom-Json
 
     if ($cache.PSObject.Properties.Name -contains $pais) {
         $ts = $cache.$pais.timestamp
-        if ($ahora - $ts -lt $TTL) {
+        if ($ahora - $ts -lt $ttl) {
             return $cache.$pais.data
         }
     }
@@ -66,11 +61,11 @@ function consultarCache ($pais) {
 
 # -----------------------------<PROGRAMA>-----------------------------
 
-$archivoCache = "archivo_cache.json"
-
-if ($Help) {
+if ($help) {
     mostrarAyuda
 }
+
+$archivoCache = "archivo_cache.json"
 
 # Crear archivo cache si no existe
 if (-not (Test-Path $archivoCache)) {
@@ -79,16 +74,14 @@ if (-not (Test-Path $archivoCache)) {
 
 # Validaciones
 if (-not $nombre) {
-    Write-Host "Error: Debe ingresar al menos un país con -nombre" -ForegroundColor Red
+    Write-Host "Error: Debe ingresar al menos un país con -nombre o -n" -ForegroundColor Red
     exit 1
 }
 
-if ($TTL -le 0) {
+if ($ttl -le 0) {
     Write-Host "Error: Debe indicar un TTL válido en segundos con -ttl" -ForegroundColor Red
     exit 1
 }
-
-
 
 #Comienza la ejecucion del programa
 $nombres = $nombre -split ','
@@ -114,14 +107,14 @@ foreach ($pais in $nombres) {
     }
 
     # Mostrar resultados
-    $nombre       = $resultado.name.common
+    $nombrePais   = $resultado.name.common
     $capital      = $resultado.capital[0]
     $region       = $resultado.region
     $poblacion    = $resultado.population
     $monedaCodigo = $resultado.currencies.PSObject.Properties.Name | Select-Object -First 1
     $monedaNombre = $resultado.currencies.$monedaCodigo.name
 
-    Write-Host "  País: $nombre"
+    Write-Host "  País: $nombrePais"
     Write-Host "  Capital: $capital"
     Write-Host "  Región: $region"
     Write-Host "  Población: $poblacion"
