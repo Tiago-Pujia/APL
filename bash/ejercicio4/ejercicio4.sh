@@ -7,6 +7,12 @@ LOG="/tmp/daemon.log"
 PIDFILE="/tmp/daemon/daemon.pid"
 
 
+#Funcion ayuda
+ayuda(){
+    cat help.txt
+    exit 0
+}
+
 
 #Ejecucion del deamon
 
@@ -55,12 +61,15 @@ stop() {
 
 
 #Ingreso de parametros
+ACTION=""
+CONFIG=""
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -c|--configuracion) CONFIG="$2"; shift 2 ;;
-
         -k|--kill) ACTION="stop"; shift ;;
-        *) echo "Uso: $0 -c <config> [-k]"; exit 1 ;;
+        -h|--help) ayuda ;;
+        *) echo "Uso: $0 [-c config] [-k] [-h]"; exit 1 ;;
     esac
 done
 
