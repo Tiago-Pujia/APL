@@ -46,13 +46,13 @@ escanear_archivo() {
             patron="${patron#regex:}"
             if LC_ALL=C grep -qE -- "$patron" "$archivo" 2>/dev/null; then
                 printf '[%s] %s\n' "$(date +"%Y-%m-%d %T")" \
-                "Alerta: patrón '$patron' en el archivo $archivo" >> "$LOG"
+                "Alerta: patrón '$patron' encontrado en el archivo $archivo" >> "$LOG"
             fi
         else
         #no regex
             if LC_ALL=C grep -qF -- "$patron" "$archivo" 2>/dev/null; then
                 printf '[%s] %s\n' "$(date +"%Y-%m-%d %T")" \
-                "Alerta: patrón '$patron' en el archivo $archivo" >> "$LOG"
+                "Alerta: patrón '$patron' encontrado en el archivo $archivo" >> "$LOG"
             fi
         fi
     done < "$config_file"
@@ -70,7 +70,7 @@ daemon_loop() {
         if [[ "$archivo" == "$prev" ]]; then
             continue
         fi
-        prev="$archivo"                                          
+        prev="$archivo"                              
         escanear_archivo "$archivo" "$config" #Escanea un archivo
     done < <(                                                        #Aca avisan si se le hicieron cosas (inotify)
         inotifywait -q -m -r -e create -e modify -e moved_to -e close_write --exclude "$exclude" "$repo" --format '%w%f'    
@@ -82,21 +82,22 @@ start() {
     local repo="$1"
     local config="$2"
 
-    if [[ -f "$PIDFILE" ]]; then        #Chequea el file para ver si ya está
+    if [[ -f "$PIDFILE" ]]; then
         echo "El daemon ya está corriendo."
         exit 1
     fi
 
     touch "$LOG"
-    #chmod 644 "$LOG"    #malo
 
     daemon_loop "$repo" "$config" >> "$LOG" 2>&1 &
 
     PID=$!
+    mkdir -p "$(dirname "$PIDFILE")"   # <- crea el directorio si no existe
     echo $PID > "$PIDFILE"
 
     echo "Daemon iniciado (PID $PID). Usando config: $config"
 }
+
 
 
 #Funcion que detiene el deamon
@@ -154,6 +155,10 @@ fi
 
 if [[ ! -f "$CONFIG" ]]; then
     echo "El archivo de configuración está vacío"
+    exit 1
+fi
+
+start "$REPO" "$CONFIG" 
     exit 1
 fi
 
