@@ -1,8 +1,8 @@
 NOMBRE
-    ejercicio2.sh - Analizador de rutas en mapa de transporte
+    ejercicio2.ps1 - Analizador de rutas en mapa de transporte
 
 SINOPSIS
-    ejercicio2.sh [OPCIÓN]... -m ARCHIVO
+    ejercicio2.ps1 [OPCIÓN]... -matriz ARCHIVO
 
 DESCRIPCIÓN
     Este script analiza rutas en una red de transporte público representada como
@@ -14,6 +14,10 @@ PARÁMETROS OBLIGATORIOS
     -matriz ARCHIVO
         Ruta del archivo de la matriz de adyacencia.
 
+    -separador CARÁCTER
+        Carácter utilizado como separador de columnas en la matriz (por defecto: espacio).
+    
+
 PARÁMETROS OPCIONALES (EXCLUYENTES)
     -hub
         Determina qué estación es el "hub" de la red (mayor número de conexiones).
@@ -23,10 +27,7 @@ PARÁMETROS OPCIONALES (EXCLUYENTES)
         Encuentra el camino más corto en tiempo entre todas las estaciones.
         No compatible con -hub.
 
-    -separador CARÁCTER
-        Carácter utilizado como separador de columnas en la matriz (por defecto: espacio).
-
-    -h, -help
+    -help
         Muestra esta ayuda y sale.
 
 NOTAS
@@ -35,6 +36,6 @@ NOTAS
     - Las opciones -hub y -camino son mutuamente excluyentes
 
 EJEMPLOS
-    ./ejercicio2.sh -matriz mapa.txt -hub
+    ./ejercicio2.sh -matriz mapa.txt -hub -separador "|"
     ./ejercicio2.sh -matriz transporte.txt -camino -separador ","
     ./ejercicio2.sh -matriz datos.csv -camino -separador ";"
