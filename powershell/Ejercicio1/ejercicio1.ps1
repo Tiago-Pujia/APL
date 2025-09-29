@@ -1,4 +1,11 @@
 #!/usr/bin/env pwsh
+
+# EJERCICIO 1
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
 param (
     [Parameter(Position=0, Mandatory=$true)]
     [string]$directorio,

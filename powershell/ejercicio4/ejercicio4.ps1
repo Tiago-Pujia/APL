@@ -1,3 +1,11 @@
+#!/usr/bin/env pwsh
+
+# EJERCICIO 4
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
 Param(
     [Parameter(Mandatory = $false)]
     [switch]$help,

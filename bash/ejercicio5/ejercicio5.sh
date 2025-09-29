@@ -1,3 +1,11 @@
+#!/bin/bash
+
+# EJERCICIO 5
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
 #Estado: 
 #    A la espera que lo testeen.
 

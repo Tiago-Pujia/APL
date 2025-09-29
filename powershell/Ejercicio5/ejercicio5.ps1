@@ -1,5 +1,11 @@
 #!/usr/bin/env pwsh
 
+# EJERCICIO 5
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
 #USO:
 # ./ejercicio5.ps1 -nombre 'pais1,pais2,...' -ttl segundos
 # -----------------------------<PARÁMETROS>-----------------------------

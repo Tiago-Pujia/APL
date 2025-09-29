@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# EJERCICIO 3
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
 # Conteo de eventos en logs de sistemas
 # Inicializo variables
 directorio=""

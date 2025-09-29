@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# EJERCICIO 1
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
+
 # Inicializar variables
 # --------------------------
 

@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# EJERCICIO 4
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
 #tail -f /tmp/daemon.log
 #Para visualizar el pid del deamon ejecutar en terminal: cat /tmp/daemon/daemon.pid
 
