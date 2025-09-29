@@ -1,65 +1,72 @@
+# === SET COMPLETO DE TESTS PowerShell SIMPLES ===
 
-# Crear archivo de prueba para matriz en ASCII
-"0,10,0,5`n10,0,0,7`n0,0,0,8`n5,7,8,0" | Out-File mapa_transporte.txt
-Write-Host "Archivo mapa_transporte.txt creado`n"
+# --- Matriz base ---
+$matriz1 = "matriz1.txt"
+@"
+0|15|7|5
+15|0|3|7
+7|3|0|8
+5|7|8|0
+"@ | Out-File $matriz1
 
-# Función auxiliar para ejecutar pruebas
+# --- Matriz con decimales ---
+$matriz3 = "matriz3.txt"
+@"
+0|2.5|3.1
+2.5|0|4.7
+3.1|4.7|0
+"@ | Out-File $matriz3
 
-# --- PRUEBAS ---
+# --- Matriz inválida: no simétrica ---
+$matriz4 = "matriz4.txt"
+@"
+0|2|2
+2|0|-3
+2|-3|2
+"@ | Out-File $matriz4
 
-# Caso válido: hub una estación
-"`nHub con archivo válido y separador válido, un hub unico"
-    ".\ejercicio2.ps1 -matriz mapa_transporte.txt -hub -separador ','"
-.\ejercicio2.ps1 -matriz mapa_transporte.txt -hub -separador ','
+Write-Host "`n===== TEST 1: Camino normal ====="
+Write-Output "`nMatriz utilizada"
+Get-Content $matriz1
+./ejercicio2.ps1 -matriz $matriz1 -separador '|' -camino 1,3
+Write-Output "`nInforme generado"
+Get-Content "archivoinforme.matriz1.md"
 
+Write-Host "`n===== TEST 2: Hub normal ====="
+./ejercicio2.ps1 -matriz $matriz1 -separador "|" -hub
+Get-Content "archivoinforme.matriz1.md"
 
-# Caso válido: hub varias estaciones
-"0,10,0,5`n10,0,15,7`n0,15,0,8`n5,7,8,0" | Out-File mapa_transporte.txt
-"`nHub con archivo válido y separador válido, hub multiple"
-    ".\ejercicio2.ps1 -matriz mapa_transporte.txt -hub -separador ','"
-.\ejercicio2.ps1 -matriz mapa_transporte.txt -hub -separador ','
+Write-Host "`n===== TEST 3: Camino con 1 número (error) ====="
+./ejercicio2.ps1 -matriz $matriz1 -separador "|" -camino 1
 
-# Caso válido: camino
-"`nCamino con dos números"
-    ".\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,3 -separador ','"
-    .\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,3 -separador ','
+Write-Host "`n===== TEST 4: Camino con 3 números (error) ====="
+./ejercicio2.ps1 -matriz $matriz1 -separador "|" -camino 1,2,3
 
-# Error: archivo no existe
-    "`nArchivo inexistente"
-    ".\ejercicio2.ps1 -matriz noexiste.txt -hub -separador ','"
-    .\ejercicio2.ps1 -matriz noexiste.txt -hub -separador ','
+Write-Host "`n===== TEST 5: Matriz con decimales ====="
+Write-Output "`nMatriz utilizada"
+Get-Content $matriz3
+./ejercicio2.ps1 -matriz $matriz3 -separador "|" -camino 1,3
+Write-Output "`nInforme generado"
+Get-Content "archivoinforme.matriz3.md"
 
-# Error: camino con un solo número
-     "`nCamino con 1 número"
-    ".\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 5 -separador '|'"
-    .\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 5 -separador '|'
+Write-Host "`n===== TEST 6: Separador vacío (error) ====="
+./ejercicio2.ps1 -matriz $matriz3 -separador "" -camino 1,2
 
-# Error: camino con 3 números
-     "`nCamino con 3 números"
-    ".\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,2,3 -separador ';'"
-    .\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,2,3 -separador ';'
+Write-Host "`n===== TEST 7: Hub y Camino juntos (error) ====="
+./ejercicio2.ps1 -matriz $matriz3 -separador "|" -camino 1,2 -hub
 
-# Error: usar hub y camino a la vez
-     "`nHub y camino juntos"
-    ".\ejercicio2.ps1 -matriz mapa_transporte.txt -hub -camino 1,2 -separador ','"
-    .\ejercicio2.ps1 -matriz mapa_transporte.txt -hub -camino 1,2 -separador ','
+Write-Host "`n===== TEST 8: Sin hub ni camino (error) ====="
+./ejercicio2.ps1 -matriz $matriz3 -separador "|"
 
-# Error: matriz invalida
-    "0,10,7,5`n10,0,0,7`n0,0,0,8`n5,7,8,0" | Out-File mapa_transporte.txt
-    "`nMatriz Inválida"
-    "`n.\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,3 -separador ','"
-    .\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,3 -separador ','
+Write-Host "`n===== TEST 9: Matriz no simétrica / números negativos (error) ====="
+Write-Output "`nMatriz utilizada"
+Get-Content $matriz4
+./ejercicio2.ps1 -matriz $matriz4 -separador "|" -hub
 
-# Caso Válido: Con |
-    "0|15|7|5`n15|0|3|7`n7|3|0|8`n5|7|8|0" | Out-File mapa_transporte.txt
-    "`n.\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,3 -separador '|'"
-    .\ejercicio2.ps1 -matriz mapa_transporte.txt -camino 1,3 -separador '|'
+# --- Limpiar archivos ---
+Remove-Item $matriz1 -ErrorAction SilentlyContinue
+Remove-Item $matriz3 -ErrorAction SilentlyContinue
+Remove-Item $matriz4 -ErrorAction SilentlyContinue
+Remove-Item "archivoinforme.matriz1.md" -ErrorAction SilentlyContinue
 
-# Caso Válido: Matriz de 10x10
-    "0|58|35|7|26|92|84|30|59|61`n58|0|16|94|53|33|15|3|34|98`n35|16|0|55|44|68|2|51|62|81`n7|94|55|0|72|21|31|36|97|23`n26|53|44|72|0|12|40|63|17|99`n92|33|68|21|12|0|75|90|60|77`n84|15|2|31|40|75|0|41|8|13`n30|3|51|36|63|90|41|0|29|57`n59|34|62|97|17|60|8|29|0|74`n61|98|81|23|99|77|13|57|74|0" | Out-File "mapa_Gigante.txt"
-    .\ejercicio2.ps1 -matriz mapa_Gigante.txt -hub -separador '|'
-    Remove-Item -Path "mapa_Gigante.txt"
-
-
-"`nBorrando entorno de prueba"
-Remove-Item -Path "mapa_transporte.txt"
+Remove-Item "archivoinforme.matriz3.md" -ErrorAction SilentlyContinue
