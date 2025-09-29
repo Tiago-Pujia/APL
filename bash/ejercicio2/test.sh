@@ -1,94 +1,120 @@
 #!/bin/bash
+# Archivo: test.sh
+# Corre pruebas sobre el script principal con matrices de ejemplo
 
-# Crear archivos de prueba
-# --------------------------
+SCRIPT="./ejercicio2.sh"
 
-#   A B C D
-#A 0
-#B   0
-#C     0
-#D       0
+# Función auxiliar para limpiar archivos generados
+cleanup() {
+    rm -f matriz.txt mala.txt informe.matriz.md
+}
 
-#0 = Misma estacion/no existe la conexion
+# Arrancamos limpio
+cleanup
 
-cat <<EOL > mapa_transporte.txt
-0|10|0|5
-10|0|4|0
-0|4|0|8
-5|0|8|0
-EOL
+# =========================
+# Tests con matriz válida
+# =========================
+cat > matriz.txt <<EOF
+0|15|7|5
+15|0|3|7
+7|3|0|8
+5|7|8|0
+EOF
+echo "Matriz utilizada:"
+cat matriz.txt
 
-echo -e "Archivos de prueba creados en $(pwd)\n"
+echo "== Test 1: faltan argumentos =="
+$SCRIPT -m matriz.txt -s "|" || echo "OK: falló como se esperaba"
 
-# Ejecutar tests
-# --------------------------
-echo -e "\nIniciando tests con archivo de prueba..."
+echo -e "\n== Test 2: hub correcto (se genera informe.matriz.md) =="
 
-echo -e "\nTest 1: " './ejercicio2.sh -m mapa_transporte.txt -s "|"'
-./ejercicio2.sh -m mapa_transporte.txt -s "|"
+$SCRIPT -m matriz.txt -s "|" -u
+if [[ -f informe.matriz.md ]]; then
+    echo "Informe generado: informe.matriz.md"
+    cat informe.matriz.md
+fi
+cleanup
+
+cat > matriz.txt <<EOF
+0-15-7-5
+15-0-3-7
+7-3-0-8
+5-7-8-0
+EOF
+echo "Matriz utilizada:"
+cat matriz.txt
+
+echo -e "\n== Test 3: camino correcto (se genera informe.matriz.md) =="
+$SCRIPT -m matriz.txt -s "-" -c 1 2
+
+if [[ -f informe.matriz.md ]]; then
+    echo "Informe generado: informe.matriz.md"
+    cat informe.matriz.md
+fi
+
+echo -e "\n== Test 4: matriz con decimales (válida) =="
+cat > matriz.txt <<EOF
+0|1.5|2.3
+1.5|0|4.7
+2.3|4.7|0
+EOF
+echo "Matriz utilizada:"
+cat matriz.txt
+$SCRIPT -m matriz.txt -s "|" -u
+
+if [[ -f informe.matriz.md ]]; then
+    echo "Informe generado: informe.matriz.md"
+    cat informe.matriz.md
+fi
+
+cleanup
+
+# =========================
+# Tests de error
+# =========================
+
+echo -e "\n== Test 5: error archivo inexistente =="
+$SCRIPT -m inexistente.txt -s "|" -u || echo "OK: detectó archivo inexistente"
+
+echo -e "\n== Test 6: error sin separador =="
+cat > matriz.txt <<EOF
+0|1
+1|0
+EOF
+echo "Matriz utilizada:"
+cat matriz.txt
+$SCRIPT -m matriz.txt -u || echo "OK: faltó separador"
+cleanup
+
+echo -e "\n== Test 7: error matriz no simétrica =="
+cat > matriz.txt <<EOF
+0|1|2
+4|0|5
+6|7|0
+EOF
+echo "Matriz utilizada:"
+cat matriz.txt
+$SCRIPT -m matriz.txt -s "|" -u || echo "OK: matriz inválida detectada"
+cleanup
+
+echo -e "\n== Test 8: error usando hub y camino juntos =="
+cat > matriz.txt <<EOF
+0|1
+1|0
+EOF
+echo "Matriz utilizada:"
+cat matriz.txt
+$SCRIPT -m matriz.txt -s "|" -u -c 1 2 || echo "OK: detectó parámetros conflictivos"
+
+echo -e "\n== Test 9: camino con un solo número (debería fallar) =="
+$SCRIPT -m matriz.txt -s "|" -c 1 || echo "OK: detectó menos de dos números"
+
+echo -e "\n== Test 10: camino con tres números (debería fallar) =="
+$SCRIPT -m matriz.txt -s "|" -c 0 2 3 || echo "OK: detectó más de dos números"
+cleanup
+
+echo -e "\n== Test 11: help =="
+$SCRIPT -h
 
 
-#Esta en un lugar que no deberia
-#pero no queria crear varios archivos de mapa
-cat <<EOL > mapa_transporte.txt
-0,10,0,5
-10,0,0,7
-0,0,0,8
-5,7,8,0
-EOL
-
-echo -e "\nTest 2: " './ejercicio2.sh -m mapa_transporte.txt -s "," -u'
-./ejercicio2.sh -m mapa_transporte.txt -s "," -u
-
-#Mas de lo mismo...
-cat <<EOL > mapa_transporte.txt
-0|10|0|0
-10|0|4|0
-0|4|0|0
-0|0|0|0
-EOL
-
-echo -e "\nTest 3: " './ejercicio2.sh -m mapa_transporte.txt -s "|" -c 1 4'
-./ejercicio2.sh -m mapa_transporte.txt -s "|" -c 1 4
-
-cat <<EOL > mapa_transporte.txt
-0}10}9}0
-10}0}4}0
-9}4}0}7
-0}0}7}0
-EOL
-
-echo -e "\nTest 4: " './ejercicio2.sh -m mapa_transporte.txt -s "}" -c 4 1'
-./ejercicio2.sh -m mapa_transporte.txt -c 4 1 -s "}" 
-
-cat <<EOL > mapa_transporte.txt
-0|0|0|0|8|2
-0|0|6|9|4|11
-0|6|0|0|7|8
-0|9|0|0|6|0
-8|4|7|6|0|5
-2|11|8|0|5|0
-EOL
-echo -e "\nTest 5: " './ejercicio2.sh -m mapa_transporte.txt -s "|" -c 4 6'
-./ejercicio2.sh -m mapa_transporte.txt -s "|" -c 4 6
-
-
-cat <<EOL > mapa_transporte.txt
-0|3|7|2|5|1|4|6|8|0
-3|0|6|4|7|2|5|3|1|8
-7|6|0|5|2|8|1|4|3|6
-2|4|5|0|9|3|7|2|6|1
-5|7|2|9|0|6|8|4|2|3
-1|2|8|3|6|0|5|7|4|9
-4|5|1|7|8|5|0|6|2|3
-6|3|4|2|4|7|6|0|9|5
-8|1|3|6|2|4|2|9|0|7
-0|8|6|1|3|9|3|5|7|0
-EOL
-echo -e "\nTest 6: " './ejercicio2.sh -m mapa_transporte.txt -s "|" -u'
-./ejercicio2.sh -m mapa_transporte.txt -s "|" -u
-
-# Limpiar entorno de prueba
-# --------------------------
-rm -f mapa_transporte.txt
-echo -e "\nArchivo de prueba eliminado"

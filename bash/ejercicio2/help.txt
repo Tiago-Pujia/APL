@@ -14,6 +14,9 @@ PARÁMETROS OBLIGATORIOS
     -m, --matriz ARCHIVO
         Ruta del archivo de la matriz de adyacencia.
 
+    -s, --separador CARÁCTER
+        Carácter utilizado como separador de columnas en la matriz (por defecto: espacio).
+
 PARÁMETROS OPCIONALES (EXCLUYENTES)
     -u, --hub
         Determina qué estación es el "hub" de la red (mayor número de conexiones).
@@ -22,9 +25,6 @@ PARÁMETROS OPCIONALES (EXCLUYENTES)
     -c, --camino
         Encuentra el camino más corto en tiempo entre todas las estaciones.
         No compatible con --hub.
-
-    -s, --separador CARÁCTER
-        Carácter utilizado como separador de columnas en la matriz (por defecto: espacio).
 
     -h, --help
         Muestra esta ayuda y sale.
@@ -35,6 +35,6 @@ NOTAS
     - Las opciones --hub y --camino son mutuamente excluyentes
 
 EJEMPLOS
-    ./ejercicio2.sh -m mapa.txt --hub
+    ./ejercicio2.sh -m mapa.txt --hub -s "|"
     ./ejercicio2.sh --matriz transporte.txt --camino --separador ","
     ./ejercicio2.sh -m datos.csv -c -s ";"

@@ -6,60 +6,9 @@
 matriz=""
 hub="false"
 camino="false"
-separador="|"
+separador=""
 ORIGEN=""
 DESTINO=""
-
-# OPTS=$(getopt -o m:ucs:h -l matriz:,hub,camino:,separador:,help -n 'ejercicio2' -- "$@")
-
-# if [ $? != 0 ]; then
-#     echo "Error en los parámetros. Use -h o --help para ayuda."
-#     exit 1
-# fi
-
-# eval set -- "$OPTS"
-
-# while true; do
-#     case "$1" in
-#         -m|--matriz)
-#             matriz="$2"
-#             shift 2
-#             ;;
-#         -u|--hub)
-#             hub="true"
-#             shift
-#             ;;
-#         -c|--camino)
-#             camino="true"
-#             # Extraer origen y destino del siguiente argumento (formato: origen,destino)
-#             IFS=',' read -ra nodos <<< "$2"
-#             if [[ ${#nodos[@]} -ne 2 ]]; then
-#                 echo "Error: --camino requiere formato 'origen,destino'"
-#                 exit 1
-#             fi
-#             ORIGEN="${nodos[0]}"
-#             DESTINO="${nodos[1]}"
-#             shift 2
-#             ;;
-#         -s|--separador)
-#             separador="$2"
-#             shift 2
-#             ;;
-#         -h|--help)
-#             cat help.txt
-#             exit 0
-#             ;;
-#         --)
-#             shift
-#             break
-#             ;;
-#         *)
-#             echo "Opción inválida: $1"
-#             echo "Use -h o --help para ayuda."
-#             exit 1
-#             ;;
-#     esac
-# done
 
 options=$(getopt -o m:ucs:h --l matriz:,hub,camino,separador:,help -- "$@" 2> /dev/null)
 
@@ -103,32 +52,6 @@ while true; do
             ;;
     esac
 done
-
-
-# Leer parámetros
-# --------------------------
-# while getopts 'm:ucs:' opt; do
-#     case "$opt" in
-#         m) matriz="$OPTARG" ;;
-#         u) hub="true" ;;
-#         c) 
-#             camino="true"
-#             # Sacar los dos próximos argumentos posicionales
-#             shift $((OPTIND-1))
-#             if [[ $# -lt 2 ]]; then
-#                 echo "Error: -c requiere 2 números (origen y destino)"
-#                 exit 1
-#             fi
-#             ORIGEN="$1"
-#             DESTINO="$2"
-#             # Ajustar OPTIND para que getopts siga correctamente
-#             OPTIND=1
-#             shift 2
-#             ;;
-#         s) separador="$OPTARG" ;;
-#         \?) echo "Opción inválida"; exit 1 ;;
-#     esac
-# done
 
 # Validaciones
 # --------------------------
@@ -203,28 +126,7 @@ fi
 if [[ "$hub" = true ]]; then
     salida+=$(awk -f hub.awk -v FS="$separador" "$matriz")
 fi
-echo -e "$salida\n" >> informe.$matriz.md
 
-# -----------------------
+base=$(basename "$matriz" .txt)
+echo -e "$salida\n" > "informe.${base}.md"
 
-# salida=$(./procesamiento_arch.awk "$directorio"/* | jq '.')
-#     # 1. Ejecutar el script awk para procesar los archivos en el directorio dado
-#     # 2. Pasar la salida a jq para formatearla como JSON
-# 
-# if [[ "$pantalla" = true ]]; then
-#     echo "$salida"
-# else
-#     echo "$salida" > "$archivo"
-#     echo "Resultados guardados en $archivo"
-# fi
-
-#   Cosas dignas de nombrar: 
-#
-#       - TODO: Help, parametros largos, guardar salida en archivo,
-#               tests como la gente.
-#       
-#       - Esta hecha la logica jodida, falta pasar a un archivo
-#         y dejar las cosas prolijas  
-#
-#       - No se como cambiar el nombre del archivo de git :)
-#         cambiar procesamiento_arch.awk a dijkstra.awk             
