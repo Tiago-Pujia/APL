@@ -1,0 +1,42 @@
+NOMBRE
+    ejercicio4.ps1 - Demonio de auditoría de seguridad para repositorios Git
+
+SINOPSIS
+    ejercicio4.ps1 [OPCIÓN]... -repo REPOSITORIO -configuracion ARCHIVO_CONFIG
+
+DESCRIPCIÓN
+    Demonio que monitorea un repositorio Git para detectar credenciales o datos
+    sensibles en archivos modificados. Registra alertas en un archivo de log.
+
+PARÁMETROS OBLIGATORIOS
+    -repo REPOSITORIO
+        Ruta del repositorio Git a monitorear.
+
+    -configuracion ARCHIVO_CONFIG
+        Ruta del archivo de configuración con patrones a buscar.
+
+PARÁMETROS OPCIONALES
+    -log ARCHIVO_LOG
+        Ruta del archivo de logs para alertas (por defecto: audit.log).
+
+    -kill
+        Detiene el demonio en ejecución para el repositorio especificado.
+
+    -help
+        Muestra esta ayuda y sale.
+
+NOTAS
+    - Ejecuta en segundo plano como demonio
+    - Los patrones pueden ser palabras clave o expresiones regex
+    - Valida que no haya más de una instancia por repositorio
+    - Se debe especificar el mismo repositorio con --kill para detener
+
+EJEMPLOS
+    # Iniciar demonio
+    ./ejercicio4.ps1 -repo /home/user/repo -configuracion patrones.conf -log auditoria.log
+    
+    # Detener demonio
+    ./ejercicio4.ps1 -repo /home/user/repo -kill
+    
+    # Configuración mínima
+    ./ejercicio4.ps1 -repo ./mi-proyecto -configuracion seguridad.conf

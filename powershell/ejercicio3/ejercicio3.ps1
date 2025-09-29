@@ -1,10 +1,17 @@
 
 Param(
+    [Parameter(Mandatory = $false)]
+    [switch]$help,
     [Parameter(Mandatory = $True, Position = 1)]
     [string[]] $Palabras,
     [Parameter(Mandatory = $True, Position = 2)]
     [string] $Directorio
 )
+
+if($help) {
+    cat help.txt
+    exit 0
+}
 
 Write-Output "Se procede a buscar $Palabras en $Directorio"
 

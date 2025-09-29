@@ -1,4 +1,6 @@
 Param(
+    [Parameter(Mandatory = $false)]
+    [switch]$help,
     [Parameter(Mandatory = $True, Position = 1)]
     [String] $repo,
     [Parameter(Mandatory = $True, Position = 2)]
@@ -8,6 +10,11 @@ Param(
     [Parameter(Mandatory = $False, Position = 4)]
     [switch] $kill #se activa si se pone, sino queda como false
 )
+
+if($help) {
+    cat help.txt
+    exit 0
+}
 
 if($kill){
     #matar el daemon
