@@ -139,6 +139,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Verificar inotify-tools
+if ! command -v inotifywait &> /dev/null; then
+    echo "Error: inotify-tools no está instalado."
+    echo "Instala con: sudo apt install inotify-tools"
+    exit 1
+fi
+
 if [[ "$ACTION" == "stop" ]]; then
     stop
     exit

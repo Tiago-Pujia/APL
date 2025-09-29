@@ -25,6 +25,10 @@ PARÁMETROS OPCIONALES
     -h, --help
         Muestra esta ayuda y sale.
 
+REQUISITOS
+    - Es necesario tener instalado inotify-tools:
+      sudo apt install inotify-tools
+
 NOTAS
     - Ejecuta en segundo plano como demonio
     - Los patrones pueden ser palabras clave o expresiones regex
