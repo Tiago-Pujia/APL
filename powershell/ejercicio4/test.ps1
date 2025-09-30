@@ -63,16 +63,16 @@ Set-Location ..
 Write-Host " Repositorio de prueba creado`n" -ForegroundColor Green
 
 # Copiar script al directorio de pruebas
-Copy-Item ../script4.ps1 . -Force
+Copy-Item ../ejercicio4.ps1 . -Force
 
 # --- PRUEBAS ---
 
 # Prueba 1: Iniciar demonio correctamente
 Show-TestResult -testName "Prueba 1: Iniciar demonio con parámetros válidos" `
-    -command "./script4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5" `
+    -command "./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5" `
     -shouldSucceed $true
 
-Start-Process pwsh -ArgumentList "-NoProfile", "-Command", "./script4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5" -WorkingDirectory $PWD
+Start-Process pwsh -ArgumentList "-NoProfile", "-Command", "./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5" -WorkingDirectory $PWD
 Start-Sleep -Seconds 2
 
 if (Test-Path audit.log) {
@@ -173,51 +173,51 @@ Get-Content audit.log | Select-String "Alerta:" | Select-Object -Last 8
 
 # Prueba 5: Intentar iniciar segundo demonio (debe fallar)
 Show-TestResult -testName "Prueba 5: Intentar iniciar segundo demonio para el mismo repositorio" `
-    -command "./script4.ps1 -repo ./test-repo -configuracion ./patrones.conf -alerta 5" `
+    -command "./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -alerta 5" `
     -shouldSucceed $false
 
 Write-Host "Resultado:" -ForegroundColor Gray
-./script4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5 2>&1
+./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5 2>&1
 
 # Prueba 6: Error - Repositorio no existe
 Show-TestResult -testName "Prueba 6: Error - Repositorio no existe" `
-    -command "./script4.ps1 -repo ./repo-inexistente -configuracion ./patrones.conf -alerta 5" `
+    -command "./ejercicio4.ps1 -repo ./repo-inexistente -configuracion ./patrones.conf -alerta 5" `
     -shouldSucceed $false
 
 Write-Host "Resultado:" -ForegroundColor Gray
-./script4.ps1 -repo ./repo-inexistente -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5 2>&1
+./ejercicio4.ps1 -repo ./repo-inexistente -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5 2>&1
 
 # Prueba 7: Error - Archivo de configuración no existe
 Show-TestResult -testName "Prueba 7: Error - Archivo de configuración no existe" `
-    -command "./script4.ps1 -repo ./test-repo -configuracion ./inexistente.conf -alerta 5" `
+    -command "./ejercicio4.ps1 -repo ./test-repo -configuracion ./inexistente.conf -alerta 5" `
     -shouldSucceed $false
 
 Write-Host "Resultado:" -ForegroundColor Gray
-./script4.ps1 -repo ./test-repo -configuracion ./inexistente.conf -log $PWD/audit.log -alerta 5 2>&1
+./ejercicio4.ps1 -repo ./test-repo -configuracion ./inexistente.conf -log $PWD/audit.log -alerta 5 2>&1
 
 # Prueba 8: Error - Faltan parámetros obligatorios
 Show-TestResult -testName "Prueba 8: Error - Faltan parámetros obligatorios" `
-    -command "./script4.ps1 -repo ./test-repo" `
+    -command "./ejercicio4.ps1 -repo ./test-repo" `
     -shouldSucceed $false
 
 Write-Host "Resultado:" -ForegroundColor Gray
-./script4.ps1 -repo ./test-repo 2>&1
+./ejercicio4.ps1 -repo ./test-repo 2>&1
 
 # Prueba 9: Detener demonio correctamente
 Show-TestResult -testName "Prueba 9: Detener demonio con -kill" `
-    -command "./script4.ps1 -repo ./test-repo -kill" `
+    -command "./ejercicio4.ps1 -repo ./test-repo -kill" `
     -shouldSucceed $true
 
 Write-Host "Resultado:" -ForegroundColor Gray
-./script4.ps1 -repo ./test-repo -kill
+./ejercicio4.ps1 -repo ./test-repo -kill
 
 # Prueba 10: Intentar detener demonio que no existe
 Show-TestResult -testName "Prueba 10: Intentar detener demonio inexistente" `
-    -command "./script4.ps1 -repo ./test-repo -kill" `
+    -command "./ejercicio4.ps1 -repo ./test-repo -kill" `
     -shouldSucceed $false
 
 Write-Host "Resultado:" -ForegroundColor Gray
-./script4.ps1 -repo ./test-repo -kill 2>&1
+./ejercicio4.ps1 -repo ./test-repo -kill 2>&1
 
 
 # --- LIMPIEZA ---
