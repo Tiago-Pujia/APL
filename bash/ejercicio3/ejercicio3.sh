@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# EJERCICIO 3
-# - Tiago Pujia
-# - Bautista Rios Di Gaeta
-# - Santiago Manghi Scheck
-# - Tomas Agustín Nielsen
-
 # Conteo de eventos en logs de sistemas
 # Inicializo variables
 directorio=""
@@ -50,11 +44,27 @@ do
     esac
 done
 
+# Verificar si el directorio existe
+if [ ! -d "$directorio" ]; then
+    echo -e "\nError: el directorio '$directorio' no existe."
+    exit 1
+fi
+
+# Verificar si el directorio contiene archivos .log
+shopt -s nullglob  # hace que el patrón *.log expanda a vacío si no hay coincidencias
+archivos=("$directorio"/*.log)
+if [ ${#archivos[@]} -eq 0 ]; then
+    echo -e "\nAdvertencia: el directorio '$directorio' no contiene archivos .log."
+    exit 1
+fi
+
+
 echo "-----------------------------------------------"
 echo "analizando eventos en logs de sistemas"
 echo "-----------------------------------------------"
 
 
 for archivo in "$directorio"/*.log; do
+    echo -e "\narchvivo: $archivo"
     awk -v lista="$palabras" -f buscarPalabras.awk "$archivo" 
 done
