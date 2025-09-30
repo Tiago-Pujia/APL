@@ -161,18 +161,18 @@ if [[ ! -d "$REPO" ]]; then # Comprobar si el directorio existe
     exit 1
 fi
 
-if [[ -z "$CONFIG" ]]; then
+if [[ ! -f "$CONFIG" ]]; then
     echo "Falta el archivo de configuración"
     exit 1
 fi
 
-if [[ ! -f "$CONFIG" ]]; then
+if [[ ! -s "$CONFIG" ]]; then
     echo "El archivo de configuración está vacío"
     exit 1
 fi
 
 start "$REPO" "$CONFIG" 
-    exit 1
+    exit 0
 fi
 
 start "$REPO" "$CONFIG" 
