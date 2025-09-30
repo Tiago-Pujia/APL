@@ -7,7 +7,7 @@
 # - Tomas Agustín Nielsen
 
 param (
-    [Parameter(Position=0, Mandatory=$true)]
+    [Parameter(Position=0, Mandatory=$false)]
     [string]$directorio,
 
     [Parameter(Position=1)]
