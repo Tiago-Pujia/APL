@@ -47,7 +47,7 @@ regex:password\s*[:=]\s*['"]\w+['"]
 regex:\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b
 "@ | Out-File -FilePath patrones.conf -Encoding UTF8
 
-Write-Host "✓ Archivo de patrones creado" -ForegroundColor Green
+Write-Host " Archivo de patrones creado" -ForegroundColor Green
 
 # Crear repositorio de prueba
 New-Item -ItemType Directory -Path test-repo -Force | Out-Null
@@ -60,7 +60,7 @@ git add README.md | Out-Null
 git commit -m "Initial commit" | Out-Null
 Set-Location ..
 
-Write-Host "✓ Repositorio de prueba creado`n" -ForegroundColor Green
+Write-Host " Repositorio de prueba creado`n" -ForegroundColor Green
 
 # Copiar script al directorio de pruebas
 Copy-Item ../script4.ps1 . -Force
@@ -76,11 +76,11 @@ Start-Process pwsh -ArgumentList "-NoProfile", "-Command", "./script4.ps1 -repo 
 Start-Sleep -Seconds 2
 
 if (Test-Path audit.log) {
-    Write-Host "✓ Demonio iniciado correctamente" -ForegroundColor Green
+    Write-Host " Demonio iniciado correctamente" -ForegroundColor Green
     Write-Host "Log inicial:" -ForegroundColor Gray
     Get-Content audit.log
 } else {
-    Write-Host "✗ ERROR: No se creó el archivo de log" -ForegroundColor Red
+    Write-Host " ERROR: No se creó el archivo de log" -ForegroundColor Red
 }
 
 # Prueba 2: Detectar credenciales en archivo .env
