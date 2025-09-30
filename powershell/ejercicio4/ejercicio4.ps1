@@ -49,8 +49,23 @@ param(
 
     [Parameter(Mandatory=$false)]
     [Alias("k")]
-    [switch]$kill
+    [switch]$kill,
+
+    [Alias('h')]
+    [switch]$help
 )
+
+# Si pidieron help, mostramos help.txt (cat help.txt) si existe.
+if ($help) {
+    $helpPath = Join-Path $PSScriptRoot 'help.txt'
+    if (Test-Path $helpPath) {
+        Get-Content $helpPath | ForEach-Object { Write-Output $_ }
+    } else {
+        # Si no existe help.txt, mostramos la ayuda integrada
+        Get-Help -Full $MyInvocation.MyCommand.Path | Out-String | Write-Output
+    }
+    exit [int]0
+}
 
 # Directorio para almacenar PIDs de demonios
 $pidDir = "$HOME/.git_monitor_pids"
