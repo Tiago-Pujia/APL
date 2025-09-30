@@ -219,43 +219,11 @@ Show-TestResult -testName "Prueba 10: Intentar detener demonio inexistente" `
 Write-Host "Resultado:" -ForegroundColor Gray
 ./script4.ps1 -repo ./test-repo -kill 2>&1
 
-# --- RESUMEN FINAL ---
-Write-Host "`n=== RESUMEN DE PRUEBAS ===" -ForegroundColor Cyan
-
-if (Test-Path audit.log) {
-    $totalLineas = (Get-Content audit.log).Count
-    $totalAlertas = (Get-Content audit.log | Select-String "Alerta:").Count
-    
-    Write-Host "`nEstadísticas del log:" -ForegroundColor Yellow
-    Write-Host "  • Total de líneas: $totalLineas" -ForegroundColor White
-    Write-Host "  • Total de alertas: $totalAlertas" -ForegroundColor White
-    
-    Write-Host "`nÚltimas 10 entradas del log:" -ForegroundColor Yellow
-    Get-Content audit.log | Select-Object -Last 10 | ForEach-Object {
-        if ($_ -match "Alerta:") {
-            Write-Host "  $_" -ForegroundColor Red
-        } else {
-            Write-Host "  $_" -ForegroundColor Gray
-        }
-    }
-} else {
-    Write-Host "✗ No se generó archivo de log" -ForegroundColor Red
-}
-
-Write-Host "`nArchivos creados en el repositorio:" -ForegroundColor Yellow
-Get-ChildItem test-repo -File | Select-Object Name, Length | Format-Table
 
 # --- LIMPIEZA ---
-Write-Host "`n¿Desea eliminar el entorno de pruebas? (S/N): " -NoNewline -ForegroundColor Yellow
-$respuesta = Read-Host
-
-if ($respuesta -eq "S" -or $respuesta -eq "s") {
     Set-Location ..
     Remove-Item -Recurse -Force $testDir
-    Write-Host "✓ Entorno de pruebas eliminado" -ForegroundColor Green
-} else {
-    Write-Host "✓ Entorno de pruebas conservado en: $testDir" -ForegroundColor Green
-    Write-Host "  Para eliminarlo manualmente: Remove-Item -Recurse -Force $testDir" -ForegroundColor Gray
-}
+    Write-Host " Entorno de pruebas eliminado" -ForegroundColor Green
+
 
 Write-Host "`n=== PRUEBAS FINALIZADAS ===" -ForegroundColor Cyan
