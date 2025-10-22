@@ -1,72 +1,127 @@
-# === SET COMPLETO DE TESTS PowerShell SIMPLES ===
+# Script para probar ejercicio2.ps1
+# Este script debe ejecutarse en la misma carpeta que ejercicio2.ps1
 
-# --- Matriz base ---
-$matriz1 = "matriz1.txt"
-@"
-0|15|7|5
-15|0|3|7
-7|3|0|8
-5|7|8|0
-"@ | Out-File $matriz1
+# --- Función Auxiliar de Pruebas ---
+function Run-Test {
+    param (
+        [string]$TestNombre,
+        [string]$Comando,
+        [string]$ResultadoEsperado, # "Error" o "Exitoso"
+        [string]$MatrizParaMostrar, # Opcional: ruta de la matriz a mostrar
+        [string]$ReporteParaMostrar # Opcional: ruta del reporte a mostrar
+    )
 
-# --- Matriz con decimales ---
-$matriz3 = "matriz3.txt"
-@"
-0|2.5|3.1
-2.5|0|4.7
-3.1|4.7|0
-"@ | Out-File $matriz3
+    Write-Host "--- PRUEBA: $TestNombre ---" -ForegroundColor Cyan
+    Write-Host "COMANDO: pwsh -Command `"$Comando`""
 
-# --- Matriz inválida: no simétrica ---
-$matriz4 = "matriz4.txt"
-@"
-0|2|2
-2|0|-3
-2|-3|2
-"@ | Out-File $matriz4
+    # Mostrar matriz de entrada si se especificó
+    if ($MatrizParaMostrar -and (Test-Path $MatrizParaMostrar)) {
+        Write-Host "--- CONTENIDO MATRIZ ($MatrizParaMostrar) ---" -ForegroundColor DarkGray
+        Get-Content $MatrizParaMostrar | Write-Host
+        Write-Host "-------------------------------" -ForegroundColor DarkGray
+    }
 
-Write-Host "`n===== TEST 1: Camino normal ====="
-Write-Output "`nMatriz utilizada"
-Get-Content $matriz1
-./ejercicio2.ps1 -matriz $matriz1 -separador '|' -camino 1,3
-Write-Output "`nInforme generado"
-Get-Content "archivoinforme.matriz1.md"
+    # Ejecutar el comando en un proceso 'pwsh' separado.
+    # Redirigimos toda la salida (stdout y stderr) a $null para mantener limpia la consola.
+    # El script ejercicio2.ps1 usa 'exit 1' para los errores lógicos (matriz inválida)
+    # y PowerShell automáticamente genera un error para parámetros faltantes/incorrectos.
+    # Por lo tanto, podemos usar $LASTEXITCODE para ver si el proceso falló.
+    pwsh -Command $Comando *>$null
+    
+    # $LASTEXITCODE captura el código de salida del último proceso (pwsh).
+    # 0 significa éxito. Cualquier otro número (generalmente 1) significa error.
+    $Exitoso = $LASTEXITCODE -eq 0
+    $ResultadoObtenido = if ($Exitoso) { "Exitoso" } else { "Error" }
 
-Write-Host "`n===== TEST 2: Hub normal ====="
-./ejercicio2.ps1 -matriz $matriz1 -separador "|" -hub
-Get-Content "archivoinforme.matriz1.md"
+    Write-Host "ESPERADO: $ResultadoEsperado"
+    Write-Host "OBTENIDO: $ResultadoObtenido"
 
-Write-Host "`n===== TEST 3: Camino con 1 número (error) ====="
-./ejercicio2.ps1 -matriz $matriz1 -separador "|" -camino 1
+    if ($ResultadoObtenido -eq $ResultadoEsperado) {
+        Write-Host "RESULTADO: PASS" -ForegroundColor Green
 
-Write-Host "`n===== TEST 4: Camino con 3 números (error) ====="
-./ejercicio2.ps1 -matriz $matriz1 -separador "|" -camino 1,2,3
+        # Mostrar reporte si la prueba fue exitosa y se especificó
+        if ($Exitoso -and $ReporteParaMostrar) {
+            if (Test-Path $ReporteParaMostrar) {
+                Write-Host "--- CONTENIDO REPORTE ($ReporteParaMostrar) ---" -ForegroundColor DarkGray
+                Get-Content $ReporteParaMostrar | Write-Host
+                Write-Host "-------------------------------" -ForegroundColor DarkGray
+            } else {
+                Write-Host "ADVERTENCIA: No se encontró el archivo de reporte '$ReporteParaMostrar' para mostrar." -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host "RESULTADO: FAIL" -ForegroundColor Red
+    }
+    Write-Host ("-"*60)
+    Write-Host ""
+}
 
-Write-Host "`n===== TEST 5: Matriz con decimales ====="
-Write-Output "`nMatriz utilizada"
-Get-Content $matriz3
-./ejercicio2.ps1 -matriz $matriz3 -separador "|" -camino 1,3
-Write-Output "`nInforme generado"
-Get-Content "archivoinforme.matriz3.md"
+# --- 1. CONFIGURACIÓN DEL ENTORNO ---
+Write-Host "--- CONFIGURANDO ENTORNO DE PRUEBA ---" -ForegroundColor Yellow
+$RutaScript = ".\ejercicio2.ps1"
 
-Write-Host "`n===== TEST 6: Separador vacío (error) ====="
-./ejercicio2.ps1 -matriz $matriz3 -separador "" -camino 1,2
+# Crear archivos de matriz de prueba
+"0,5,10`n5,0,2`n10,2,0" | Out-File "matriz_valida.txt" -Encoding utf8
+"0,1`n1,0,3" | Out-File "matriz_no_cuadrada.txt" -Encoding utf8
+"0,A`nA,0" | Out-File "matriz_no_numerica.txt" -Encoding utf8
+"0,-5`n-5,0" | Out-File "matriz_negativa.txt" -Encoding utf8
+"1,5`n5,0" | Out-File "matriz_diagonal_no_cero.txt" -Encoding utf8
+"0,5`n8,0" | Out-File "matriz_no_simetrica.txt" -Encoding utf8
+Write-Host "Archivos de matriz de prueba creados."
+Write-Host ""
 
-Write-Host "`n===== TEST 7: Hub y Camino juntos (error) ====="
-./ejercicio2.ps1 -matriz $matriz3 -separador "|" -camino 1,2 -hub
 
-Write-Host "`n===== TEST 8: Sin hub ni camino (error) ====="
-./ejercicio2.ps1 -matriz $matriz3 -separador "|"
+# --- 2. EJECUCIÓN DE PRUEBAS DE PARÁMETROS ---
+Write-Host "--- EJECUTANDO PRUEBAS DE PARÁMETROS ---" -ForegroundColor Yellow
 
-Write-Host "`n===== TEST 9: Matriz no simétrica / números negativos (error) ====="
-Write-Output "`nMatriz utilizada"
-Get-Content $matriz4
-./ejercicio2.ps1 -matriz $matriz4 -separador "|" -hub
+# Pruebas de parámetros obligatorios
+Run-Test "Error: Falta -hub O -camino" "$RutaScript -matriz 'matriz_valida.txt' -separador ','" "Error"
 
-# --- Limpiar archivos ---
-Remove-Item $matriz1 -ErrorAction SilentlyContinue
-Remove-Item $matriz3 -ErrorAction SilentlyContinue
-Remove-Item $matriz4 -ErrorAction SilentlyContinue
-Remove-Item "archivoinforme.matriz1.md" -ErrorAction SilentlyContinue
+# Prueba de parámetros mutuamente excluyentes
+Run-Test "Error: Parámetros mutuamente excluyentes (-hub y -camino)" "$RutaScript -matriz 'matriz_valida.txt' -separador ',' -hub -camino" "Error"
 
-Remove-Item "archivoinforme.matriz3.md" -ErrorAction SilentlyContinue
+# Pruebas de ValidateScript (vacíos)
+Run-Test "Error: -matriz está vacío" "$RutaScript -matriz '' -separador ',' -hub" "Error"
+Run-Test "Error: -separador está vacío" "$RutaScript -matriz 'matriz_valida.txt' -separador '' -hub" "Error"
+
+# Prueba de ValidateScript (archivo no existe)
+Run-Test "Error: -matriz el archivo no existe" "$RutaScript -matriz 'archivo_inexistente.txt' -separador ',' -hub" "Error"
+
+
+# --- 3. EJECUCIÓN DE PRUEBAS DE LÓGICA (validarMatriz) ---
+Write-Host "--- EJECUTANDO PRUEBAS DE VALIDACIÓN DE MATRIZ ---" -ForegroundColor Yellow
+
+Run-Test "Error: Matriz no cuadrada" "$RutaScript -matriz 'matriz_no_cuadrada.txt' -separador ',' -hub" "Error"
+Run-Test "Error: Matriz no numérica" "$RutaScript -matriz 'matriz_no_numerica.txt' -separador ',' -hub" "Error"
+Run-Test "Error: Matriz con valor negativo" "$RutaScript -matriz 'matriz_negativa.txt' -separador ',' -hub" "Error"
+Run-Test "Error: Matriz con diagonal no cero" "$RutaScript -matriz 'matriz_diagonal_no_cero.txt' -separador ',' -hub" "Error"
+Run-Test "Error: Matriz no simétrica" "$RutaScript -matriz 'matriz_no_simetrica.txt' -separador ',' -hub" "Error"
+
+# --- 4. PRUEBA DE CASO EXITOSO ---
+Write-Host "--- EJECUTANDO PRUEBA DE CASO EXITOSO ---" -ForegroundColor Yellow
+
+$matrizValida = "matriz_valida.txt"
+# El script principal crea el reporte basado en el nombre de la matriz
+$reporteGenerado = "informe_$( [System.IO.Path]::GetFileNameWithoutExtension($matrizValida) ).md"
+
+Run-Test "Exitoso: Matriz válida (-hub) Y MOSTRAR SALIDA" `
+    "$RutaScript -matriz '$matrizValida' -separador ',' -hub" `
+    "Exitoso" `
+    -MatrizParaMostrar $matrizValida `
+    -ReporteParaMostrar $reporteGenerado
+
+Run-Test "Exitoso: Matriz válida (-camino) Y MOSTRAR SALIDA" `
+    "$RutaScript -matriz '$matrizValida' -separador ',' -camino" `
+    "Exitoso" `
+    -MatrizParaMostrar $matrizValida `
+    -ReporteParaMostrar $reporteGenerado
+
+
+# --- 5. LIMPIEZA ---
+Write-Host "--- LIMPIANDO ENTORNO DE PRUEBA ---" -ForegroundColor Yellow
+Remove-Item "matriz_*.txt" -ErrorAction SilentlyContinue
+# Limpiar los archivos de informe generados por las corridas exitosas
+Remove-Item "informe_matriz_valida.md" -ErrorAction SilentlyContinue
+Write-Host "Archivos de prueba y reportes generados eliminados."
+Write-Host "--- PRUEBAS COMPLETADAS ---" -ForegroundColor Yellow
+

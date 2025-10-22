@@ -1,4 +1,56 @@
-#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+ejercicio2.ps1 [OPCIÓN]... -matriz ARCHIVO -separador CARÁCTER (-hub | -camino)
+.DESCRIPTION
+Este script analiza rutas en una red de transporte público representada como
+una matriz de adyacencia donde los valores representan el tiempo de viaje
+entre estaciones. Puede determinar el hub de la red o encontrar el camino
+más corto entre estaciones usando el algoritmo de Dijkstra.
+
+.PARAMETER -matriz
+Ruta del archivo de la matriz de adyacencia. Es obligatorio.
+
+.PARAMETER -separador
+Carácter utilizado como separador de columnas en la matriz. Es obligatorio.
+
+.PARAMETER -hub
+Determina qué estación es el "hub" de la red (mayor número de conexiones).
+.NOTES
+No compatible con -camino.
+
+.PARAMETER -camino
+Encuentra el camino más corto en tiempo entre todas las estaciones.
+.NOTES
+No compatible con -hub.
+
+.NOTES
+- El archivo de matriz debe ser cuadrado y simétrico con valores numéricos enteros o decimales positivos.
+- Un valor 0 indica que no hay conexión directa entre estaciones.
+- Las opciones -hub y -camino son mutuamente excluyentes (debe usar una u otra).
+.INPUTS
+System.IO.FileInfo
+    El archivo de matriz especificado mediante -Matriz.
+
+System.Char
+    El carácter separador especificado mediante -Separador.
+
+.OUTPUTS
+System.IO.FileInfo
+    Archivo de informe generado con los resultados del análisis.
+
+.EXAMPLE
+./ejercicio2.ps1 -matriz mapa.txt -hub -separador "|"
+Calcula el hub de la red desde el archivo 'mapa.txt' usando '|' como separador.
+
+.EXAMPLE
+./ejercicio2.ps1 -matriz transporte.txt -camino -separador ","
+Calcula el camino más corto en la red de 'transporte.txt' usando ',' como separador.
+
+.EXAMPLE
+./ejercicio2.ps1 -matriz datos.csv -camino -separador ";"
+Calcula el camino más corto en la red de 'datos.csv' usando ';' como separador.
+#>
+
 
 # EJERCICIO 2
 # - Tiago Pujia
@@ -10,29 +62,28 @@ Param (
     [Parameter(Mandatory = $True)]
     [string]
     [ValidateScript({
-            if ([string]::IsNullOrWhiteSpace($_)) {
-                throw "El parámetro -matriz no puede estar vacío."
-            }
-            if (-not (Test-Path $_ -PathType Leaf)) {
-                throw "El archivo '$($_)' no existe."
-            }
-            $true  # necesario para que la validación pase
-        })]
+        if ([string]::IsNullOrWhiteSpace($_)) {
+            throw "El parámetro -matriz no puede estar vacío."
+        }
+        if (-not (Test-Path $_ -PathType Leaf)) {
+            throw "El archivo '$($_)' no existe."
+        }
+        $true # necesario para que la validación pase
+    })]
     $matriz,
 
     [Parameter(Mandatory = $True)]
     [string]
     [ValidateScript({
-            if ([string]::IsNullOrWhiteSpace($_)) {
-                throw "El parámetro -separador no puede estar vacío."
-            }
-            $true
-        })]
+        if ([string]::IsNullOrWhiteSpace($_)) {
+            throw "El parámetro -separador no puede estar vacío."
+        }
+        $true
+    })]
     $separador,
 
     [Parameter(Mandatory = $True, ParameterSetName = "camino")]
-    [int[]]
-    [ValidateCount(2, 2)]
+    [switch]
     $camino,
 
     [Parameter(Mandatory = $True, ParameterSetName = "hub")]
@@ -62,6 +113,9 @@ function validarMatriz {
             break
         }
     }
+    
+    if (-not $valido) { return $false } # Salir si no es cuadrada
+
     for ($i = 0; $i -lt $numFilas; $i++) {
         for ($j = 0; $j -lt $numFilas; $j++) {
             $valor = $filas[$i][$j]
@@ -94,16 +148,15 @@ function validarMatriz {
                 break
             }
         }
+        if (-not $valido) { break } # Salir del bucle exterior si se encontró error
     }
     return $valido
 }
 
 function Dijkstra {
     param(
-        [string]$matrizPath,         # Ruta al archivo con la matriz
-        [int]$origen,                # Terminal de origen (1-indexado)
-        [int]$destino,               # Terminal de destino (1-indexado)
-        [string]$separador = ","     # Separador en el archivo
+        [string]$matrizPath,     # Ruta al archivo con la matriz
+        [string]$separador = "," # Separador en el archivo
     )
 
     
@@ -114,6 +167,8 @@ function Dijkstra {
 
     # 2. Pasar a array bidimensional y marcar ceros fuera de diagonal como infinito
     $n = $matriz.Count
+    $origen = 1
+    $destino = $n
     $grafo = New-Object 'object[,]' $n, $n
     for ($i = 0; $i -lt $n; $i++) {
         for ($j = 0; $j -lt $n; $j++) {
@@ -232,17 +287,20 @@ $valido = validarMatriz -path $matriz -separador $separador
 
 if ($valido -eq $false) {
     Write-Host "La matriz no es valida`n"
-    exit
+    exit 1 # Es buena práctica salir con un código de error
 }
 
 $resultado = "## Informe de análisis de red de transporte`n"
 if ($hub -eq $false) {
-    $resultado += Dijkstra -matrizPath $matriz -origen $camino[0] -destino $camino[1] -separador $separador
+    $resultado += Dijkstra -matrizPath $matriz -separador $separador
 }
 else {
     $resultado += hub -path $matriz -separador $separador
 }
-$nombreArchivo = "archivoinforme.$([System.IO.Path]::ChangeExtension($matriz, ".md"))"
+
+# Generar un nombre de archivo más descriptivo
+$nombreBase = [System.IO.Path]::GetFileNameWithoutExtension($matriz)
+$nombreArchivo = "informe_$($nombreBase).md"
 $resultado | Out-File -FilePath "$nombreArchivo"
 
-    
+Write-Host "Informe generado: $nombreArchivo"
