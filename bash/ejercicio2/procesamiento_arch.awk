@@ -1,9 +1,6 @@
 #!/usr/bin/awk -f
 
 BEGIN {
-  SRC = ORIGEN + 0
-  DST = DESTINO + 0
-
   INF = 10^9
   n = 0
 }
@@ -25,7 +22,8 @@ BEGIN {
 
 END {
 
-
+  SRC = 1
+  DST = n
   # Inicialización
   for (i=1; i<=n; i++) {
     dist[i] = INF
@@ -58,7 +56,7 @@ END {
 
   # Reconstrucción de camino
   if (dist[DST] >= INF/2) {
-    printf("**Camino más corto: entre Estación %d y Estación %d:**\n**No existe camino de %d a %d**\n", ORIGEN, DESTINO, ORIGEN, DESTINO)
+    printf("No existe camino de %d a %d\n", ORIGEN, DESTINO)
     exit
   }
 
@@ -72,5 +70,5 @@ END {
     cur = prev[cur]
   }
 
-  printf("**Camino más corto: entre Estación %d y Estación %d:**\n**Tiempo total:** %d minutos\n**Ruta:** %s\n", ORIGEN, DESTINO, dist[DST], path)
+  printf("Camino más corto de %d a %d: costo = %d | %s\n", SRC, DST, dist[DST], path)
 }

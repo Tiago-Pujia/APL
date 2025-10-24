@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# EJERCICIO 2
-# - Tiago Pujia
-# - Bautista Rios Di Gaeta
-# - Santiago Manghi Scheck
-# - Tomas Agustín Nielsen
-
 # Inicializar variables
 # --------------------------
 
@@ -13,8 +7,7 @@ matriz=""
 hub="false"
 camino="false"
 separador=""
-ORIGEN=""
-DESTINO=""
+
 
 options=$(getopt -o m:ucs:h --l matriz:,hub,camino,separador:,help -- "$@" 2> /dev/null)
 
@@ -45,7 +38,48 @@ while true; do
             ;;
         -h|--help)
             #ayuda
-            cat help.txt
+            echo "
+            NOMBRE
+                ejercicio2.sh - Analizador de rutas en mapa de transporte
+
+            SINOPSIS
+                ejercicio2.sh [OPCIÓN]... -m ARCHIVO
+
+            DESCRIPCIÓN
+                Este script analiza rutas en una red de transporte público representada como
+                una matriz de adyacencia donde los valores representan el tiempo de viaje
+                entre estaciones. Puede determinar el hub de la red o encontrar el camino
+                más corto entre estaciones usando el algoritmo de Dijkstra.
+
+            PARÁMETROS OBLIGATORIOS
+                -m, --matriz ARCHIVO
+                    Ruta del archivo de la matriz de adyacencia.
+
+                -s, --separador CARÁCTER
+                    Carácter utilizado como separador de columnas en la matriz (por defecto: espacio).
+
+            PARÁMETROS OPCIONALES (EXCLUYENTES)
+                -u, --hub
+                    Determina qué estación es el "hub" de la red (mayor número de conexiones).
+                    No compatible con --camino.
+
+                -c, --camino
+                    Encuentra el camino más corto en tiempo entre todas las estaciones.
+                    No compatible con --hub.
+
+                -h, --help
+                    Muestra esta ayuda y sale.
+
+            NOTAS
+                - El archivo de matriz debe ser cuadrado y simétrico con valores numéricos enteros o decimales positivos
+                - Un valor 0 indica que no hay conexión directa entre estaciones
+                - Las opciones --hub y --camino son mutuamente excluyentes
+
+            EJEMPLOS
+                ./ejercicio2.sh -m mapa.txt --hub -s \"|\"
+                ./ejercicio2.sh --matriz transporte.txt --camino --separador \",\"
+                ./ejercicio2.sh -m datos.csv -c -s \";\"
+            "
             exit 0
             ;;
         --)
@@ -61,31 +95,6 @@ done
 
 # Validaciones
 # --------------------------
-
-if [[ "$camino" == "true" ]]; then
-    # Verificar que existan $1 y $2
-    if [[ -z "${1:-}" || -z "${2:-}" ]]; then
-        echo "Error: --camino requiere 2 números (origen y destino)."
-        exit 1
-    fi
-
-    ORIGEN="$1"
-    DESTINO="$2"
-
-    # Validación: enteros positivos
-    if ! [[ "$ORIGEN" =~ ^[0-9]+$ && "$DESTINO" =~ ^[0-9]+$ ]]; then
-        echo "Error: ORIGEN y DESTINO deben ser enteros positivos."
-        exit 1
-    fi
-
-    # Verificar que no haya un tercer argumento
-    if [[ -n "${3:-}" ]]; then
-        echo "Error: se recibieron más de 2 números para --camino."
-        exit 1
-    fi
-    shift 2  # Consumir ORIGEN y DESTINO
-fi
-
 if [[ -z "$separador" ]]; then # Comprobar cadena vacia
     echo "Debe especificar separador con -s"
     exit 1
@@ -127,7 +136,7 @@ if [[ "$camino" = true ]]; then
 
     #CAMBIAR procesamiento_arch.awk a dijkstra.awk
 
-    salida+=$(awk -f procesamiento_arch.awk -v FS="$separador" -v ORIGEN="$ORIGEN" -v DESTINO="$DESTINO" "$matriz")
+    salida+=$(awk -f procesamiento_arch.awk -v FS="$separador" "$matriz")
 fi
 if [[ "$hub" = true ]]; then
     salida+=$(awk -f hub.awk -v FS="$separador" "$matriz")

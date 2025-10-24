@@ -46,7 +46,7 @@ echo "Matriz utilizada:"
 cat matriz.txt
 
 echo -e "\n== Test 3: camino correcto (se genera informe.matriz.md) =="
-$SCRIPT -m matriz.txt -s "-" -c 1 2
+$SCRIPT -m matriz.txt -s "-" -c
 
 if [[ -f informe.matriz.md ]]; then
     echo "Informe generado: informe.matriz.md"
@@ -107,14 +107,9 @@ echo "Matriz utilizada:"
 cat matriz.txt
 $SCRIPT -m matriz.txt -s "|" -u -c 1 2 || echo "OK: detectó parámetros conflictivos"
 
-echo -e "\n== Test 9: camino con un solo número (debería fallar) =="
-$SCRIPT -m matriz.txt -s "|" -c 1 || echo "OK: detectó menos de dos números"
-
-echo -e "\n== Test 10: camino con tres números (debería fallar) =="
-$SCRIPT -m matriz.txt -s "|" -c 0 2 3 || echo "OK: detectó más de dos números"
-cleanup
-
 echo -e "\n== Test 11: help =="
 $SCRIPT -h
+
+rm matriz.txt
 
 
