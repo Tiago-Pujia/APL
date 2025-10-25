@@ -29,8 +29,54 @@ PIDFILE="/tmp/daemon/daemon.pid"
 
 #Funcion ayuda
 ayuda(){
-    cat help.txt
-    exit 0
+echo "
+NOMBRE
+    ejercicio4.sh - Demonio de auditoría de seguridad para repositorios Git
+
+SINOPSIS
+    ejercicio4.sh [OPCIÓN]... -r REPOSITORIO -c ARCHIVO_CONFIG
+
+DESCRIPCIÓN
+    Demonio que monitorea un repositorio Git para detectar credenciales o datos
+    sensibles en archivos modificados. Registra alertas en un archivo de log.
+
+PARÁMETROS OBLIGATORIOS
+    -r, --repo REPOSITORIO
+        Ruta del repositorio Git a monitorear.
+
+    -c, --configuracion ARCHIVO_CONFIG
+        Ruta del archivo de configuración con patrones a buscar.
+
+PARÁMETROS OPCIONALES
+    -l, --log ARCHIVO_LOG
+        Ruta del archivo de logs para alertas (por defecto: audit.log).
+
+    -k, --kill
+        Detiene el demonio en ejecución para el repositorio especificado.
+
+    -h, --help
+        Muestra esta ayuda y sale.
+
+REQUISITOS
+    - Es necesario tener instalado inotify-tools:
+      sudo apt install inotify-tools
+
+NOTAS
+    - Ejecuta en segundo plano como demonio
+    - Los patrones pueden ser palabras clave o expresiones regex
+    - Valida que no haya más de una instancia por repositorio
+    - Se debe especificar el mismo repositorio con --kill para detener
+
+EJEMPLOS
+    # Iniciar demonio
+    ./ejercicio4.sh -r /home/user/repo -c patrones.conf -l auditoria.log
+    
+    # Detener demonio
+    ./ejercicio4.sh -r /home/user/repo --kill
+    
+    # Configuración mínima
+    ./ejercicio4.sh --repo ./mi-proyecto --configuracion seguridad.conf
+"
 }
 
 
@@ -132,9 +178,9 @@ REPO=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -c|--configuracion) CONFIG="$2"; shift 2 ;;
-        -r|--repo) REPO="$2"; shift 2 ;;
-        -k|--kill) ACTION="stop"; shift ;;
-        -h|--help) ayuda ;;
+        -r|--repo) REPO="$2";            shift 2 ;;
+        -k|--kill) ACTION="stop";        shift 1 ;;
+        -h|--help) ayuda();              exit  0 ;;
         *) echo "Uso: $0 [-c config] [-k] [-h]"; exit 1 ;;
     esac
 done
