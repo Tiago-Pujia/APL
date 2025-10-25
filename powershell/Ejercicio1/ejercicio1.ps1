@@ -1,10 +1,49 @@
 #!/usr/bin/env pwsh
 
-# EJERCICIO 1
-# - Tiago Pujia
-# - Bautista Rios Di Gaeta
-# - Santiago Manghi Scheck
-# - Tomas Agustín Nielsen
+<#
+.SYNOPSIS
+    Procesador de encuestas de satisfacción
+
+.DESCRIPTION
+    Este script procesa archivos de texto que contienen registros de encuestas de 
+    satisfacción de clientes, con formato de campos fijos separados por pipe (|). 
+    Calcula el tiempo de respuesta promedio y la nota de satisfacción promedio 
+    por canal de atención y por día. Los resultados se muestran en pantalla o 
+    se guardan en un archivo JSON.
+
+.PARAMETER directorio
+    Ruta del directorio que contiene los archivos de encuestas a procesar.
+    (Acepta rutas relativas o absolutas y rutas con espacios.)
+
+.PARAMETER archivo
+    Ruta completa del archivo JSON de salida.
+
+.PARAMETER pantalla
+    Muestra la salida por pantalla en formato JSON.
+
+.PARAMETER help
+    Muestra esta ayuda y sale.
+
+.EXAMPLE
+    ejercicio1.ps1 -directorio .\datos -pantalla
+
+.EXAMPLE
+    ejercicio1.ps1 -directorio "C:\Mis Encuestas" -archivo resultado.json
+
+.EXAMPLE
+    ejercicio1.ps1 -h
+
+.NOTES
+    Las opciones -archivo y -pantalla son mutuamente excluyentes.
+    El script valida que el directorio exista y que las lineas de los archivos
+    tengan el formato: ID|FECHA|CANAL|TIEMPO|NOTA
+
+    Autores:
+    - Tiago Pujia
+    - Bautista Rios Di Gaeta
+    - Santiago Manghi Scheck
+    - Tomas Agustín Nielsen
+#>
 
 param (
     [Parameter(Position=0, Mandatory=$false)]
@@ -19,15 +58,9 @@ param (
     [switch]$help
 )
 
-# Si pidieron help, mostramos help.txt (cat help.txt) si existe.
+# Si pidieron help, mostramos la ayuda integrada
 if ($help) {
-    $helpPath = Join-Path $PSScriptRoot 'help.txt'
-    if (Test-Path $helpPath) {
-        Get-Content $helpPath | ForEach-Object { Write-Output $_ }
-    } else {
-        # Si no existe help.txt, mostramos la ayuda integrada
-        Get-Help -Full $MyInvocation.MyCommand.Path | Out-String | Write-Output
-    }
+    Get-Help $MyInvocation.MyCommand.Path -Full
     exit [int]0
 }
 

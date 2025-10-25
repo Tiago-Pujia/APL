@@ -1,34 +1,47 @@
 #!/usr/bin/env pwsh
 
+<#
+.SYNOPSIS
+    Demonio para monitorear cambios en repositorios Git y buscar patrones específicos.
+
+.DESCRIPTION
+    Este script funciona como un demonio que monitorea un repositorio Git en busca de cambios.
+    Cuando detecta modificaciones, escanea los archivos cambiados en busca de patrones
+    definidos en un archivo de configuración y genera alertas en un archivo de log.
+
+.PARAMETER repo
+    Ruta del repositorio Git a monitorear.
+
+.PARAMETER configuracion
+    Ruta del archivo de configuración con patrones a buscar.
+
+.PARAMETER log
+    Ruta del archivo de logs (opcional, por defecto: ./audit.log).
+
+.PARAMETER alerta
+    Intervalo en segundos para verificar cambios (opcional, por defecto: 10).
+
+.PARAMETER kill
+    Flag para detener el demonio en ejecución.
+
+.PARAMETER help
+    Muestra esta ayuda y sale.
+
+.EXAMPLE
+    ./audit.ps1 -repo /home/user/myrepo -configuracion ./patrones.conf -alerta 10
+
+.EXAMPLE
+    ./audit.ps1 -repo /home/user/myrepo -kill
+
+.EXAMPLE
+    ./audit.ps1 -help
+#>
+
 # EJERCICIO 4
 # - Tiago Pujia
 # - Bautista Rios Di Gaeta
 # - Santiago Manghi Scheck
 # - Tomas Agustín Nielsen
-
-#!/usr/bin/env pwsh
-
-<#
-
-.-repo
-    Ruta del repositorio Git a monitorear
-
-. -configuracion
-    Ruta del archivo de configuración con patrones a buscar.
-
-. -log
-    Ruta del archivo de logs (opcional, por defecto: ./audit.log).
-
-. -alerta
-    Intervalo en segundos para verificar cambios (opcional, por defecto: 10).
-
-. -kill
-    Flag para detener el demonio en ejecución.
-
-. ejemplo
-    ./audit.ps1 -repo /home/user/myrepo -configuracion ./patrones.conf -alerta 10
-    ./audit.ps1 -repo /home/user/myrepo -kill
-#>
 
 param(
     [Parameter(Mandatory=$false)]
@@ -55,15 +68,9 @@ param(
     [switch]$help
 )
 
-# Si pidieron help, mostramos help.txt (cat help.txt) si existe.
+# Si pidieron help, mostramos la ayuda integrada
 if ($help) {
-    $helpPath = Join-Path $PSScriptRoot 'help.txt'
-    if (Test-Path $helpPath) {
-        Get-Content $helpPath | ForEach-Object { Write-Output $_ }
-    } else {
-        # Si no existe help.txt, mostramos la ayuda integrada
-        Get-Help -Full $MyInvocation.MyCommand.Path | Out-String | Write-Output
-    }
+    Get-Help $MyInvocation.MyCommand.Path -Full
     exit [int]0
 }
 

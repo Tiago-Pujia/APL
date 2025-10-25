@@ -55,6 +55,11 @@ Param(
 
 
 # --- Validaciones ---
+if ($help) {
+    Get-Help $MyInvocation.MyCommand.Path -Full
+    exit [int]0
+}
+
 if (-not $Palabras -or $Palabras.Count -eq 0 -or [string]::IsNullOrWhiteSpace($Palabras[0])) {
     Write-Error "Debe ingresar al menos una palabra a buscar."
     exit 1

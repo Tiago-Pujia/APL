@@ -1,56 +1,55 @@
 <#
 .SYNOPSIS
-ejercicio2.ps1 [OPCIÓN]... -matriz ARCHIVO -separador CARÁCTER (-hub | -camino)
+    ejercicio2.ps1 [OPCIÓN]... -matriz ARCHIVO -separador CARÁCTER (-hub | -camino)
 .DESCRIPTION
-Este script analiza rutas en una red de transporte público representada como
-una matriz de adyacencia donde los valores representan el tiempo de viaje
-entre estaciones. Puede determinar el hub de la red o encontrar el camino
-más corto entre estaciones usando el algoritmo de Dijkstra.
+    Este script analiza rutas en una red de transporte público representada como
+    una matriz de adyacencia donde los valores representan el tiempo de viaje
+    entre estaciones. Puede determinar el hub de la red o encontrar el camino
+    más corto entre estaciones usando el algoritmo de Dijkstra.
 
 .PARAMETER -matriz
-Ruta del archivo de la matriz de adyacencia. Es obligatorio.
+    Ruta del archivo de la matriz de adyacencia. Es obligatorio.
 
 .PARAMETER -separador
-Carácter utilizado como separador de columnas en la matriz. Es obligatorio.
+    Carácter utilizado como separador de columnas en la matriz. Es obligatorio.
 
 .PARAMETER -hub
-Determina qué estación es el "hub" de la red (mayor número de conexiones).
+    Determina qué estación es el "hub" de la red (mayor número de conexiones).
 .NOTES
-No compatible con -camino.
+    No compatible con -camino.
 
 .PARAMETER -camino
-Encuentra el camino más corto en tiempo entre todas las estaciones.
+    Encuentra el camino más corto en tiempo entre todas las estaciones.
 .NOTES
-No compatible con -hub.
+    No compatible con -hub.
 
 .NOTES
-- El archivo de matriz debe ser cuadrado y simétrico con valores numéricos enteros o decimales positivos.
-- Un valor 0 indica que no hay conexión directa entre estaciones.
-- Las opciones -hub y -camino son mutuamente excluyentes (debe usar una u otra).
+    - El archivo de matriz debe ser cuadrado y simétrico con valores numéricos enteros o decimales positivos.
+    - Un valor 0 indica que no hay conexión directa entre estaciones.
+    - Las opciones -hub y -camino son mutuamente excluyentes (debe usar una u otra).
 .INPUTS
-System.IO.FileInfo
-    El archivo de matriz especificado mediante -Matriz.
+    System.IO.FileInfo
+        El archivo de matriz especificado mediante -Matriz.
 
-System.Char
-    El carácter separador especificado mediante -Separador.
+    System.Char
+        El carácter separador especificado mediante -Separador.
 
 .OUTPUTS
-System.IO.FileInfo
-    Archivo de informe generado con los resultados del análisis.
+    System.IO.FileInfo
+        Archivo de informe generado con los resultados del análisis.
 
 .EXAMPLE
-./ejercicio2.ps1 -matriz mapa.txt -hub -separador "|"
-Calcula el hub de la red desde el archivo 'mapa.txt' usando '|' como separador.
+    ./ejercicio2.ps1 -matriz mapa.txt -hub -separador "|"
+    Calcula el hub de la red desde el archivo 'mapa.txt' usando '|' como separador.
 
 .EXAMPLE
-./ejercicio2.ps1 -matriz transporte.txt -camino -separador ","
-Calcula el camino más corto en la red de 'transporte.txt' usando ',' como separador.
+    ./ejercicio2.ps1 -matriz transporte.txt -camino -separador ","
+    Calcula el camino más corto en la red de 'transporte.txt' usando ',' como separador.
 
 .EXAMPLE
-./ejercicio2.ps1 -matriz datos.csv -camino -separador ";"
-Calcula el camino más corto en la red de 'datos.csv' usando ';' como separador.
+    ./ejercicio2.ps1 -matriz datos.csv -camino -separador ";"
+    Calcula el camino más corto en la red de 'datos.csv' usando ';' como separador.
 #>
-
 
 # EJERCICIO 2
 # - Tiago Pujia
@@ -281,6 +280,11 @@ function hub {
         $resultado = "**Hub de la red:** Estaciones $($hubs -join ', ') ($maxConexiones conexiones)`n"
     }
     return $resultado
+}
+
+if ($help) {
+    Get-Help $MyInvocation.MyCommand.Path -Full
+    exit [int]0
 }
 
 $valido = validarMatriz -path $matriz -separador $separador

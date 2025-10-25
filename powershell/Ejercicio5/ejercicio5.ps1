@@ -1,14 +1,45 @@
 #!/usr/bin/env pwsh
 
+<#
+.SYNOPSIS
+    Buscador de información de países usando la API REST Countries.
+
+.DESCRIPTION
+    Consulta información de países utilizando la API REST Countries y almacena
+    los resultados en una caché con tiempo de vida (TTL) configurable.
+    Muestra información como capital, región, población y moneda.
+
+.PARAMETER nombre
+    Nombre(s) de los países a buscar. Múltiples nombres se separan por comas.
+
+.PARAMETER ttl
+    Tiempo en segundos que se guardarán los resultados en caché.
+
+.PARAMETER help
+    Muestra esta ayuda y sale.
+
+.EXAMPLE
+    .\ejercicio5.ps1 -nombre argentina -ttl 60
+
+.EXAMPLE
+    .\ejercicio5.ps1 -nombre spain,france -ttl 7200
+
+.EXAMPLE
+    .\ejercicio5.ps1 -nombre japan,canada,mexico -ttl 1800
+
+.NOTES
+    - Utiliza la API pública: https://restcountries.com/v3.1/name/
+    - Los resultados en caché se invalidan automáticamente después del TTL
+    - Soporta búsqueda de múltiples países simultáneamente
+    - Autores: Tiago Pujia, Bautista Rios Di Gaeta, Santiago Manghi Scheck, Tomas Agustín Nielsen
+#>
+
 # EJERCICIO 5
 # - Tiago Pujia
 # - Bautista Rios Di Gaeta
 # - Santiago Manghi Scheck
 # - Tomas Agustín Nielsen
 
-#USO:
-# ./ejercicio5.ps1 -nombre 'pais1,pais2,...' -ttl segundos
-# -----------------------------<PARÁMETROS>-----------------------------
 Param(
     [Parameter(Mandatory=$false)] [string[]]$nombre,
     [Parameter(Mandatory=$false)] [int]$ttl,
@@ -16,11 +47,6 @@ Param(
 )
 
 # -----------------------------<FUNCIONES>-----------------------------
-
-function mostrarAyuda {
-    cat help.txt
-    exit
-}
 
 #Consulta a la API
 function consultarAPI ($pais) {
@@ -68,7 +94,8 @@ function consultarCache ($pais) {
 # -----------------------------<PROGRAMA>-----------------------------
 
 if ($help) {
-    mostrarAyuda
+    Get-Help $MyInvocation.MyCommand.Path -Full
+    exit 0
 }
 
 $archivoCache = "archivo_cache.json"
