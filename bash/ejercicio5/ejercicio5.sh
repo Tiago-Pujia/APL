@@ -6,9 +6,6 @@
 # - Santiago Manghi Scheck
 # - Tomas Agustín Nielsen
 
-#Estado: 
-#    A la espera que lo testeen.
-
 #Flujo de datos:
 #1)Ingresar parametros y valida que no tenga numeros ni caracter especial (excepto la ñ)
 #2)Por cada parametro:
@@ -27,9 +24,8 @@ declare -a nombres
 
 #-----------------------------<FUNCIONES>-----------------------------
 
-#Funcion ayuda
 ayuda(){
-echo "
+cat <<'EOF'
 NOMBRE
     ejercicio5.sh - Buscador de información de países
 
@@ -38,7 +34,7 @@ SINOPSIS
 
 DESCRIPCIÓN
     Consulta información de países utilizando la API REST Countries y almacena
-    los resultados en una caché con tiempo de vida (TTL) que se pasa como parametro.
+    los resultados en una caché con tiempo de vida (TTL) individual por registro.
 
 PARÁMETROS OBLIGATORIOS
     -n, --nombre PAÍS(ES)
@@ -52,56 +48,58 @@ PARÁMETROS OPCIONALES
     -h, --help
         Muestra esta ayuda y sale.
 
-INFORMACIÓN MOSTRADA
-    - País
-    - Capital
-    - Región
-    - Población
-    - Moneda
-
-NOTAS
-    - Utiliza la API pública: https://restcountries.com/v3.1/name/
-    - Los resultados en caché se invalidan automáticamente después del TTL
-    - Soporta búsqueda de múltiples países simultáneamente
-
 EJEMPLOS
     ./ejercicio5.sh -n argentina -t 60
     ./ejercicio5.sh --nombre spain,france --ttl 7200
     ./ejercicio5.sh -n japan,canada,mexico -t 1800
-"
+EOF
 }
 
 
-#Funcion para consultar API
+# Consulta API
 consultar_api() {
     local pais="$1"
-    resultadoAPI=$(curl -s "https://restcountries.com/v3.1/name/$pais")
+    local url="https://restcountries.com/v3.1/name/$pais"
+    local resultadoAPI
+    resultadoAPI=$(curl -s "$url")
     if [[ -z "$resultadoAPI" || "$resultadoAPI" == "[]" ]]; then
-        echo "Error: No se encontró información para '$pais'."
+        echo "Error: No se encontró información para '$pais'." >&2
         return 1
     fi
     echo "$resultadoAPI" | jq '.[0]'
 }
 
-#Funcion para guardar en cache
+# Guarda en caché 
 guardar_cache() {
     local pais="$1"
     local datos="$2"
+    local ttl_local="$3"
     local ts=$(date +%s)
+    local tmp=$(mktemp)
 
-    tmp=$(mktemp)
-    jq --arg pais "$pais" --argjson datos "$datos" --arg ts "$ts" \
-       '. + {($pais): {timestamp: ($ts | tonumber), data: $datos}}' \
+    # Si el archivo está vacío o corrupto, lo reinicia
+    if ! jq empty "$archivo_cache" &>/dev/null; then
+        echo "{}" > "$archivo_cache"
+    fi
+
+    jq --arg pais "$pais" --argjson datos "$datos" --arg ts "$ts" --arg ttl "$ttl_local" \
+       '. + {($pais): {timestamp: ($ts|tonumber), ttl: ($ttl|tonumber), data: $datos}}' \
        "$archivo_cache" > "$tmp" && mv "$tmp" "$archivo_cache"
 }
-#Funcion para consultar cache
+
+# Consulta caché 
 consultar_cache() {
     local pais="$1"
     local ahora=$(date +%s)
 
-    if jq -e --arg pais "$pais" '.[$pais]' "$archivo_cache" >/dev/null; then
+    # Verifica que el país esté en la caché
+    if jq -e --arg pais "$pais" '.[$pais]' "$archivo_cache" &>/dev/null; then
+        local ts ttl_guardado
         ts=$(jq -r --arg pais "$pais" '.[$pais].timestamp' "$archivo_cache")
-        if (( ahora - ts < ttl )); then
+        ttl_guardado=$(jq -r --arg pais "$pais" '.[$pais].ttl' "$archivo_cache")
+
+        # Verifica si sigue vigente
+        if (( ahora - ts < ttl_guardado )); then
             jq -c --arg pais "$pais" '.[$pais].data' "$archivo_cache"
             return 0
         fi
@@ -109,89 +107,75 @@ consultar_cache() {
     return 1
 }
 
-
-
 #-----------------------------<PROGRAMA>-----------------------------
 
-#Si no existe el archivo lo creo. No se borra el existente.
-if [[ ! -f "$archivo_cache" ]]; then
-    echo "{}" > "$archivo_cache"
-fi
+# Crear archivo de caché si no existe
+[[ ! -f "$archivo_cache" ]] && echo "{}" > "$archivo_cache"
 
-#->Formato de entrada
-options=$(getopt -o n:t:h --long nombre:,ttl:,help -- "$@" 2> /dev/null)
-if [ "$?" != "0" ]; then
-    echo 'Opciones incorrectas'
+# Parsear parámetros
+options=$(getopt -o n:t:h --long nombre:,ttl:,help -- "$@" 2>/dev/null)
+if [[ $? -ne 0 ]]; then
+    echo 'Opciones incorrectas. Use -h para ayuda.'
     exit 1
 fi
 
-
 eval set -- "$options"
-while true
-do
+while true; do
     case "$1" in
         -n|--nombre)
             IFS=',' read -r -a nombres <<< "$2"
-            shift 2
-            ;;
+            shift 2;;
         -t|--ttl)
             ttl="$2"
-            shift 2
-            ;;
+            shift 2;;
         -h|--help)
-            ayuda(); 
-            exit 0;
-            ;;
+            ayuda; exit 0;;
         --)
-            shift
-            break
-            ;;
+            shift; break;;
         *)
-            echo "error"
-            exit 1
-            ;;
+            echo "Error en parámetros"; exit 1;;
     esac
 done
 
-
-#Valido las entradas
+# Validaciones
 if [[ ${#nombres[@]} -eq 0 ]]; then
-    echo "Error: Debe ingresar al menos un país con -n"
+    echo "Error: Debe ingresar al menos un país con -n" >&2
     exit 1
 fi
 
 if ! [[ "$ttl" =~ ^[0-9]+$ ]] || [[ $ttl -le 0 ]]; then
-    echo "Error: Debe indicar un TTL válido en segundos con -t"
+    echo "Error: Debe indicar un TTL válido (entero > 0) con -t" >&2
     exit 1
 fi
 
 
 for pais in "${nombres[@]}"; do
-    # Valido el nombre
+    pais=$(echo "$pais" | xargs)  
+
     if ! [[ "$pais" =~ ^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$ ]]; then
-        echo "Error: El nombre del país solo puede contener letras y espacios."
+        echo "Error: El nombre del país '$pais' solo puede contener letras y espacios." >&2
         continue
     fi
-
-    # Consultar cache
+ # Consultar cache
     if resultado=$(consultar_cache "$pais"); then
         echo "Datos desde caché:"
     else # Consulto API
-        echo "Consultando API..."
+        echo "Consultando API para '$pais'..."
         if resultado=$(consultar_api "$pais"); then
-            guardar_cache "$pais" "$resultado"
+            guardar_cache "$pais" "$resultado" "$ttl"
         else
             continue
         fi
     fi
 
-    # Extraigo los campos y los imprimo
+  # Extraigo los campos y los imprimo
     nombre=$(echo "$resultado" | jq -r '.name.common')
     capital=$(echo "$resultado" | jq -r '.capital[0]')
     region=$(echo "$resultado" | jq -r '.region')
     poblacion=$(echo "$resultado" | jq -r '.population')
     moneda_codigo=$(echo "$resultado" | jq -r '.currencies | keys[0]')
     moneda_nombre=$(echo "$resultado" | jq -r ".currencies[\"$moneda_codigo\"].name")
+
     echo "  País: $nombre"
     echo "  Capital: $capital"
     echo "  Región: $region"
