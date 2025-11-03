@@ -1,3 +1,10 @@
+
+# EJERCICIO 4
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
+
 #!/usr/bin/env pwsh
 
 <#
@@ -21,6 +28,9 @@
 .PARAMETER alerta
     Intervalo en segundos para verificar cambios (opcional, por defecto: 10).
 
+.PARAMETER status
+    Muestra el estado de los monitores activos.
+
 .PARAMETER kill
     Flag para detener el demonio en ejecución.
 
@@ -28,20 +38,23 @@
     Muestra esta ayuda y sale.
 
 .EXAMPLE
-    ./audit.ps1 -repo /home/user/myrepo -configuracion ./patrones.conf -alerta 10
+    ./ejercicio4.ps1 -repo /home/user/myrepo -configuracion ./patrones.conf
+    Inicia el monitoreo del repositorio en segundo plano.
 
 .EXAMPLE
-    ./audit.ps1 -repo /home/user/myrepo -kill
+    ./ejercicio4.ps1 -status
+    Muestra todos los monitores activos.
 
 .EXAMPLE
-    ./audit.ps1 -help
+    ./ejercicio4.ps1 -repo /home/user/myrepo -kill
+    Detiene el monitoreo del repositorio.
+
+.EXAMPLE
+    ./ejercicio4.ps1 -repo /home/user/myrepo -configuracion ./patrones.conf -alerta 10 -log ./custom.log
+    Inicia el monitoreo con configuración personalizada.
+    
 #>
 
-# EJERCICIO 4
-# - Tiago Pujia
-# - Bautista Rios Di Gaeta
-# - Santiago Manghi Scheck
-# - Tomas Agustín Nielsen
 
 param(
     [Parameter(Mandatory=$false)]
@@ -58,77 +71,53 @@ param(
 
     [Parameter(Mandatory=$false)]
     [Alias("a")]
-    [int]$alerta = 10,
+    [int]$alerta = 5,
 
     [Parameter(Mandatory=$false)]
     [Alias("k")]
     [switch]$kill,
 
+    [Parameter(Mandatory=$false)]
+    [Alias("s")]
+    [switch]$status,
+
     [Alias('h')]
-    [switch]$help
+    [switch]$help,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$__daemon  # Parámetro interno para el proceso daemon
 )
 
-# Si pidieron help, mostramos la ayuda integrada
+# Mostrar ayuda si se solicita
 if ($help) {
     Get-Help $MyInvocation.MyCommand.Path -Full
-    exit [int]0
-}
-
-# Directorio para almacenar PIDs de demonios
-$pidDir = "$HOME/.git_monitor_pids"
-if (-not (Test-Path $pidDir)) {
-    New-Item -ItemType Directory -Path $pidDir -Force | Out-Null
-}
-
-# Función para obtener el archivo PID basado en el repositorio
-function Get-PidFile {
-    param([string]$repoPath)
-    $repoHash = [System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($repoPath))
-    $hashString = [System.BitConverter]::ToString($repoHash).Replace("-", "").Substring(0, 16)
-    return Join-Path $pidDir "monitor_$hashString.pid"
-}
-
-# Función para verificar si un proceso está corriendo
-function Test-ProcessRunning {
-    param([int]$daemonPid)
-    try {
-        $process = Get-Process -Id $daemonPid -ErrorAction SilentlyContinue
-        return $null -ne $process
-    } catch {
-        return $false
-    }
-}
-
-# Función para detener el demonio
-function Stop-Daemon {
-    param([string]$repoPath)
-    
-    $pidFile = Get-PidFile -repoPath $repoPath
-    
-    if (-not (Test-Path $pidFile)) {
-        Write-Host "❌ No hay ningún demonio en ejecución para este repositorio." -ForegroundColor Red
-        exit 1
-    }
-    
-    $daemonPid = Get-Content $pidFile
-    
-    if (Test-ProcessRunning -daemonPid $daemonPid) {
-        try {
-            Stop-Process -Id $daemonPid -Force
-            Write-Host "✓ Demonio detenido (PID: $daemonPid)" -ForegroundColor Green
-        } catch {
-            Write-Host "❌ Error al detener el proceso: $_" -ForegroundColor Red
-            exit 1
-        }
-    } else {
-        Write-Host "⚠ El proceso no está en ejecución. Limpiando archivo PID..." -ForegroundColor Yellow
-    }
-    
-    Remove-Item $pidFile -Force
     exit 0
 }
 
-# Función para cargar patrones del archivo de configuración
+# === Directorio para almacenar info de monitores activos ===
+$pidDir = "$HOME/.git_monitor_pids"
+if (-not (Test-Path $pidDir)) { 
+    New-Item -ItemType Directory -Path $pidDir | Out-Null 
+}
+
+# === Funciones auxiliares ===
+
+function Get-PidFile {
+    param([string]$repoPath)
+    $hash = [System.BitConverter]::ToString(
+        [System.Security.Cryptography.SHA256]::Create().ComputeHash(
+            [System.Text.Encoding]::UTF8.GetBytes($repoPath)
+        )
+    ).Replace("-", "").Substring(0, 16)
+    return Join-Path $pidDir "monitor_$hash.pid"
+}
+
+function Write-Log {
+    param([string]$message, [string]$logFile)
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -Path $logFile -Value "[$timestamp] $message"
+}
+
 function Get-Patterns {
     param([string]$configFile)
     
@@ -162,193 +151,402 @@ function Get-Patterns {
     return $patterns
 }
 
-# Función para escribir en el log
-function Write-Log {
-    param(
-        [string]$message,
-        [string]$logFile
-    )
-        
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "[$timestamp] $message"
+function Get-CurrentBranch {
+    param([string]$repoPath)
     
-    # Asegurar que el directorio existe
-    $logDir = Split-Path -Parent $logFile
-    if ($logDir -and -not (Test-Path $logDir)) {
-        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-    }
+    Push-Location $repoPath
+    $branch = git rev-parse --abbrev-ref HEAD 2>$null
+    Pop-Location
     
-    # Escribir al archivo
-    Add-Content -Path $logFile -Value $logEntry -Force
+    return $branch
 }
 
-# Función para escanear archivos
-function Scan-Files {
+function Get-LastCommitHash {
+    param([string]$repoPath)
+    
+    Push-Location $repoPath
+    $hash = git rev-parse HEAD 2>$null
+    Pop-Location
+    
+    return $hash
+}
+
+function Get-ModifiedFilesInCommit {
+    param([string]$repoPath, [string]$commitHash)
+    
+    Push-Location $repoPath
+    $files = git diff-tree --no-commit-id --name-only -r $commitHash 2>$null
+    Pop-Location
+    
+    return $files
+}
+
+function Get-FileContentAtCommit {
+    param([string]$repoPath, [string]$commitHash, [string]$filePath)
+    
+    Push-Location $repoPath
+    $content = git show "${commitHash}:${filePath}" 2>$null
+    Pop-Location
+    
+    return $content
+}
+
+function Scan-FileContent {
     param(
-        [string[]]$files,
+        [string]$content,
+        [string]$filePath,
         [array]$patterns,
-        [string]$repoPath,
-        [string]$logFile
+        [string]$logFile,
+        [string]$commitHash
     )
     
-    foreach ($file in $files) {
-        $fullPath = Join-Path $repoPath $file
+    if (-not $content) { return }
+
+    foreach ($pattern in $patterns) {
+        $found = $false
         
-        if (-not (Test-Path $fullPath) -or (Test-Path $fullPath -PathType Container)) {
-            continue
+        if ($pattern.Type -eq "regex") {
+            if ($content -match $pattern.Pattern) { $found = $true }
+        } else {
+            if ($content -match [regex]::Escape($pattern.Pattern)) { $found = $true }
         }
         
-        try {
-            $content = Get-Content $fullPath -Raw -ErrorAction SilentlyContinue
-            
-            if ($null -eq $content) {
-                continue
-            }
-            
-            foreach ($pattern in $patterns) {
-                $found = $false
-                
-                if ($pattern.Type -eq "regex") {
-                    if ($content -match $pattern.Pattern) {
-                        $found = $true
-                    }
-                } else {
-                    if ($content -match [regex]::Escape($pattern.Pattern)) {
-                        $found = $true
-                    }
-                }
-                
-               if ($found) {
-                $displayPattern = if ($pattern.Type -eq "regex") { $pattern.Display } else { $pattern.Pattern }
-                $message = "Alerta: patrón '$displayPattern' encontrado en el archivo '$file'."
-                Write-Log -message $message -logFile $logFile
-                Write-Host "🚨 $message" -ForegroundColor Yellow
-                }
-            }
-        } catch {
-            Write-Log -message "Error al escanear archivo '$file': $_" -logFile $logFile
+        if ($found) {
+            $msg = "🚨 ALERTA: Patrón '$($pattern.Display)' encontrado en '$filePath' (commit: $($commitHash.Substring(0,7)))"
+            Write-Log -message $msg -logFile $logFile
         }
     }
 }
 
-# Función principal del demonio
+# === Inicio del monitoreo (proceso daemon) ===
+function Start-Monitor {
+    param(
+        [string]$repoPath,
+        [string]$configFile,
+        [string]$logFile,
+        [int]$delay
+    )
+
+    if (-not (Test-Path (Join-Path $repoPath ".git"))) {
+        Write-Log -message "ERROR: No es un repositorio Git válido: $repoPath" -logFile $logFile
+        exit 1
+    }
+
+    $pidFile = Get-PidFile $repoPath
+    if (Test-Path $pidFile) {
+        Write-Log -message "ERROR: Ya hay un monitoreo activo para este repositorio" -logFile $logFile
+        exit 1
+    }
+
+    $patterns = Get-Patterns $configFile
+    $currentBranch = Get-CurrentBranch $repoPath
+    if (-not $currentBranch) {
+        Write-Log -message "ERROR: No se pudo determinar la rama actual" -logFile $logFile
+        exit 1
+    }
+
+    $lastKnownCommit = Get-LastCommitHash $repoPath
+    if (-not $lastKnownCommit) {
+        Write-Log -message "ERROR: No hay commits en el repositorio" -logFile $logFile
+        exit 1
+    }
+
+    # Guardar información del monitor
+    $info = @{
+        PID           = $PID
+        Repo          = $repoPath
+        Branch        = $currentBranch
+        LastCommit    = $lastKnownCommit
+        StartTime     = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        LogFile       = $logFile
+    }
+    $info | ConvertTo-Json | Set-Content $pidFile
+
+    Write-Log -message "Monitoreo iniciado en '$repoPath' rama '$currentBranch' (PID: $PID, Patrones: $($patterns.Count))" -logFile $logFile
+
+    # Loop principal de monitoreo
+    try {
+        while ($true) {
+            Start-Sleep -Seconds $delay
+            
+            if (-not (Test-Path $pidFile)) {
+                Write-Log -message "Monitoreo detenido externamente" -logFile $logFile
+                break
+            }
+
+            $currentCommit = Get-LastCommitHash $repoPath
+            
+            if ($currentCommit -ne $lastKnownCommit) {
+                Write-Log -message "Nuevo commit detectado: $currentCommit" -logFile $logFile
+                
+                Push-Location $repoPath
+                $newCommits = git rev-list "$lastKnownCommit..$currentCommit" 2>$null
+                Pop-Location
+                
+                if ($newCommits) {
+                    $commitsList = if ($newCommits -is [array]) { 
+                        [array]::Reverse($newCommits)
+                        $newCommits 
+                    } else { 
+                        @($newCommits) 
+                    }
+                    
+                    foreach ($commit in $commitsList) {
+                        $modifiedFiles = Get-ModifiedFilesInCommit -repoPath $repoPath -commitHash $commit
+                        
+                        if ($modifiedFiles) {
+                            foreach ($file in $modifiedFiles) {
+                                if ($file -match '^\.git/') { continue }
+                                
+                                $content = Get-FileContentAtCommit -repoPath $repoPath -commitHash $commit -filePath $file
+                                
+                                if ($content) {
+                                    Scan-FileContent -content $content -filePath $file -patterns $patterns -logFile $logFile -commitHash $commit
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                $lastKnownCommit = $currentCommit
+                $info.LastCommit = $lastKnownCommit
+                $info | ConvertTo-Json | Set-Content $pidFile
+            }
+        }
+    }
+    catch {
+        Write-Log -message "Error en el loop principal: $_" -logFile $logFile
+    }
+    finally {
+        if (Test-Path $pidFile) {
+            Remove-Item $pidFile -Force
+        }
+        Write-Log -message "Monitoreo finalizado" -logFile $logFile
+    }
+}
+
+# === Detener monitoreo ===
+function Stop-Monitor {
+    param([string]$repoPath)
+
+    $pidFile = Get-PidFile $repoPath
+    if (-not (Test-Path $pidFile)) {
+        Write-Host "❌ No hay monitoreo activo para este repositorio." -ForegroundColor Red
+        exit 1
+    }
+
+    $info = Get-Content $pidFile | ConvertFrom-Json
+    $monitorPID = $info.PID
+    
+    Write-Host "🛑 Deteniendo monitoreo (PID: $monitorPID)..." -ForegroundColor Yellow
+
+    try {
+        $process = Get-Process -Id $monitorPID -ErrorAction SilentlyContinue
+        if ($process) {
+            Stop-Process -Id $monitorPID -Force
+            Write-Host "✓ Proceso detenido" -ForegroundColor Green
+        } else {
+            Write-Host "⚠ El proceso ya no está corriendo" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Host "⚠ No se pudo detener el proceso: $_" -ForegroundColor Yellow
+    }
+
+    Remove-Item $pidFile -Force
+    Write-Host "✓ Monitoreo detenido para '$repoPath'" -ForegroundColor Green
+    
+    if ($info.LogFile) {
+        Write-Log -message "Monitoreo detenido para $repoPath" -logFile $info.LogFile
+    }
+}
+
+# === Mostrar estado de monitores ===
+function Show-Status {
+    $pidFiles = Get-ChildItem -Path $pidDir -Filter "monitor_*.pid" -ErrorAction SilentlyContinue
+    
+    if (-not $pidFiles) {
+        Write-Host "ℹ No hay monitores activos" -ForegroundColor Cyan
+        return
+    }
+    
+    Write-Host "`n📊 Monitores activos:" -ForegroundColor Green
+    Write-Host ("=" * 80) -ForegroundColor Gray
+    
+    foreach ($pidFile in $pidFiles) {
+        try {
+            $info = Get-Content $pidFile.FullName | ConvertFrom-Json
+            $process = Get-Process -Id $info.PID -ErrorAction SilentlyContinue
+            
+            $status = if ($process) { "🟢 Activo" } else { "🔴 Detenido" }
+            
+            Write-Host "`n$status" -ForegroundColor $(if ($process) { "Green" } else { "Red" })
+            Write-Host "  PID:        $($info.PID)"
+            Write-Host "  Repo:       $($info.Repo)" -ForegroundColor Cyan
+            Write-Host "  Rama:       $($info.Branch)" -ForegroundColor Cyan
+            Write-Host "  Inicio:     $($info.StartTime)" -ForegroundColor Gray
+            Write-Host "  Log:        $($info.LogFile)" -ForegroundColor Gray
+            Write-Host "  Último:     $($info.LastCommit.Substring(0,7))" -ForegroundColor Gray
+            
+            if (-not $process) {
+                Write-Host "  ⚠ El proceso no está corriendo, pero el archivo PID existe" -ForegroundColor Yellow
+            }
+        }
+        catch {
+            Write-Host "`n🔴 Error leyendo: $($pidFile.Name)" -ForegroundColor Red
+            Write-Host "  $_" -ForegroundColor Red
+        }
+    }
+    
+    Write-Host "`n" + ("=" * 80) -ForegroundColor Gray
+}
+
+# === Lanzar proceso daemon ===
 function Start-Daemon {
     param(
         [string]$repoPath,
         [string]$configFile,
         [string]$logFile,
-        [int]$interval
+        [int]$delay
     )
-    
-    # Validar repositorio
-    if (-not (Test-Path $repoPath)) {
-        Write-Host "❌ El repositorio no existe: $repoPath" -ForegroundColor Red
+
+    # Verificaciones previas
+    if (-not (Test-Path (Join-Path $repoPath ".git"))) {
+        Write-Host "❌ No es un repositorio Git válido: $repoPath" -ForegroundColor Red
         exit 1
     }
-    
-    $gitDir = Join-Path $repoPath ".git"
-    if (-not (Test-Path $gitDir)) {
-        Write-Host "❌ El directorio no es un repositorio Git: $repoPath" -ForegroundColor Red
+
+    try {
+        $gitVersion = git --version
+        Write-Host "✓ Git detectado: $gitVersion" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "❌ Git no está instalado o no está en el PATH" -ForegroundColor Red
         exit 1
     }
-    
-    # Validar que no haya otro demonio corriendo
-    $pidFile = Get-PidFile -repoPath $repoPath
+
+    $pidFile = Get-PidFile $repoPath
     if (Test-Path $pidFile) {
-        $existingPid = Get-Content $pidFile
-        if (Test-ProcessRunning -daemonPid $existingPid) {
-            Write-Host "❌ Ya existe un demonio en ejecución para este repositorio (PID: $existingPid)" -ForegroundColor Red
-            exit 1
-        } else {
-            Remove-Item $pidFile -Force
-        }
+        Write-Host "⚠ Ya hay un monitoreo activo para este repositorio." -ForegroundColor Yellow
+        Write-Host "  Use -kill para detenerlo primero." -ForegroundColor Yellow
+        exit 1
     }
-    
-    # Cargar patrones
-    $patterns = Get-Patterns -configFile $configFile
+
+    $patterns = Get-Patterns $configFile
     Write-Host "✓ Cargados $($patterns.Count) patrones de búsqueda" -ForegroundColor Green
+
+    $currentBranch = Get-CurrentBranch $repoPath
+    if (-not $currentBranch) {
+        Write-Host "❌ No se pudo determinar la rama actual" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "✓ Monitoreando rama: $currentBranch" -ForegroundColor Green
+
+    # Lanzar proceso en segundo plano
+    $scriptPath = $MyInvocation.PSCommandPath
     
-    # Guardar PID del proceso actual
-    $currentPid = $PID
-    Set-Content -Path $pidFile -Value $currentPid
-    Write-Host "✓ Demonio iniciado (PID: $currentPid)" -ForegroundColor Green
-    Write-Host "📁 Repositorio: $repoPath" -ForegroundColor Cyan
-    Write-Host "📋 Log: $logFile" -ForegroundColor Cyan
-    Write-Host "⏱  Intervalo: $interval segundos" -ForegroundColor Cyan
-    Write-Host ""
-    
-    Write-Log -message "Demonio iniciado. Monitoreando repositorio: $repoPath" -logFile $logFile
-    
-    # Obtener commit inicial
-    Push-Location $repoPath
-    $lastCommit = git rev-parse HEAD 2>$null
-    Pop-Location
-    
-    # Loop principal de monitoreo
-    while ($true) {
-        Start-Sleep -Seconds $interval
-        
-        Push-Location $repoPath
-        
-        # Actualizar información del repositorio
-        git fetch origin 2>&1 | Out-Null
-        
-        # Obtener commit actual
-        $currentCommit = git rev-parse HEAD 2>$null
-        
-        # Verificar si hay cambios
-        if ($currentCommit -ne $lastCommit) {
-            Write-Host "🔍 Cambios detectados, escaneando..." -ForegroundColor Cyan
-            
-            # Obtener archivos modificados
-            $changedFiles = git diff --name-only $lastCommit $currentCommit 2>$null
-            
-            if ($changedFiles) {
-                $fileArray = $changedFiles -split "`n" | Where-Object { $_ }
-                Write-Log -message "Detectados $($fileArray.Count) archivos modificados" -logFile $logFile
-                
-                Scan-Files -files $fileArray -patterns $patterns -repoPath $repoPath -logFile $logFile
-            }
-            
-            $lastCommit = $currentCommit
-        }
-        
-        Pop-Location
+    # Preparar argumentos para el proceso daemon
+    $daemonArgs = @(
+        "-File", $scriptPath,
+        "-__daemon",
+        "-repo", $repoPath,
+        "-configuracion", $configFile,
+        "-log", $logFile,
+        "-alerta", $delay
+    )
+
+    Write-Host "`n🚀 Lanzando daemon en segundo plano..." -ForegroundColor Cyan
+
+    # Iniciar proceso en segundo plano
+    if ($IsWindows -or $PSVersionTable.PSVersion.Major -lt 6 -or $null -eq $IsWindows) {
+        # Windows
+        $process = Start-Process -FilePath "pwsh" -ArgumentList $daemonArgs -WindowStyle Hidden -PassThru
+    } else {
+        # Linux/macOS - usar & para proceso en background
+        $cmd = "pwsh $($daemonArgs -join ' ') > /dev/null 2>&1 &"
+        Invoke-Expression $cmd
+        $process = $null
+    }
+
+    # Esperar un momento para verificar que el daemon inició correctamente
+    Start-Sleep -Seconds 2
+
+    if (Test-Path $pidFile) {
+        $info = Get-Content $pidFile | ConvertFrom-Json
+        Write-Host "✓ Daemon iniciado exitosamente" -ForegroundColor Green
+        Write-Host "  PID:        $($info.PID)" -ForegroundColor Cyan
+        Write-Host "  Repositorio: $repoPath" -ForegroundColor Cyan
+        Write-Host "  Rama:       $currentBranch" -ForegroundColor Cyan
+        Write-Host "  Log:        $logFile" -ForegroundColor Cyan
+        Write-Host "  Intervalo:  $delay segundos" -ForegroundColor Cyan
+        Write-Host "`n💡 Use './ejercicio4.ps1 -status' para ver el estado" -ForegroundColor Gray
+        Write-Host "💡 Use './ejercicio4.ps1 -repo $repoPath -kill' para detener" -ForegroundColor Gray
+    } else {
+        Write-Host "⚠ El daemon pudo no haber iniciado correctamente" -ForegroundColor Yellow
+        Write-Host "  Revise el archivo de log: $logFile" -ForegroundColor Yellow
     }
 }
 
-# Script principal
+# === LOGICA PRINCIPAL ===
+
+# Si es el proceso daemon interno
+if ($__daemon) {
+    Start-Monitor -repoPath $repo -configFile $configuracion -logFile $log -delay $alerta
+    exit 0
+}
+
+# Mostrar estado
+if ($status) {
+    Show-Status
+    exit 0
+}
+
+# Detener monitoreo
 if ($kill) {
     if (-not $repo) {
-        Write-Host "❌ Debe especificar el repositorio con -repo para detener el demonio" -ForegroundColor Red
+        Write-Host "❌ Debe especificar el repositorio con -repo para detener el monitoreo" -ForegroundColor Red
+        Write-Host "   Ejemplo: ./ejercicio4.ps1 -repo /ruta/repositorio -kill" -ForegroundColor Gray
         exit 1
     }
     
-    $repoFullPath = Resolve-Path $repo -ErrorAction SilentlyContinue
-    if (-not $repoFullPath) {
-        $repoFullPath = $repo
-    }
-    
-    Stop-Daemon -repoPath $repoFullPath
-} else {
-    if (-not $repo -or -not $configuracion) {
-        Write-Host "❌ Uso: ./audit.ps1 -repo <ruta> -configuracion <archivo> [-log <archivo>] [-alerta <segundos>]" -ForegroundColor Red
-        Write-Host "        ./audit.ps1 -repo <ruta> -kill" -ForegroundColor Red
+    $repoFull = Resolve-Path $repo -ErrorAction SilentlyContinue
+    if (-not $repoFull) {
+        Write-Host "❌ Ruta de repositorio inválida: $repo" -ForegroundColor Red
         exit 1
     }
     
-    # Resolver rutas absolutas
-    $repoFullPath = Resolve-Path $repo -ErrorAction SilentlyContinue
-    if (-not $repoFullPath) {
-        $repoFullPath = $repo
-    }
-    
-    $configFullPath = Resolve-Path $configuracion -ErrorAction SilentlyContinue
-    if (-not $configFullPath) {
-        Write-Host "❌ Archivo de configuración no encontrado: $configuracion" -ForegroundColor Red
-        exit 1
-    }
-    
-    # Iniciar demonio
-    Start-Daemon -repoPath $repoFullPath -configFile $configFullPath -logFile $log -interval $alerta
-}   
+    Stop-Monitor -repoPath $repoFull
+    exit 0
+}
+
+# Iniciar monitoreo
+if (-not $repo -or -not $configuracion) {
+    Write-Host "❌ Faltan parámetros requeridos`n" -ForegroundColor Red
+    Write-Host "Uso:" -ForegroundColor Yellow
+    Write-Host "  ./ejercicio4.ps1 -repo <ruta> -configuracion <archivo> [-log <archivo>] [-alerta <segundos>]"
+    Write-Host "  ./ejercicio4.ps1 -status"
+    Write-Host "  ./ejercicio4.ps1 -repo <ruta> -kill`n"
+    Write-Host "Ejemplos:" -ForegroundColor Cyan
+    Write-Host "  ./ejercicio4.ps1 -repo /home/user/myrepo -configuracion ./patrones.conf"
+    Write-Host "  ./ejercicio4.ps1 -status"
+    Write-Host "  ./ejercicio4.ps1 -repo /home/user/myrepo -kill"
+    Write-Host "  Get-Help ./ejercicio4.ps1 -Full`n"
+    exit 1
+}
+
+# Resolver rutas
+$repoFull = Resolve-Path $repo -ErrorAction SilentlyContinue
+$confFull = Resolve-Path $configuracion -ErrorAction SilentlyContinue
+
+if (-not $repoFull) {
+    Write-Host "❌ Repositorio no encontrado: $repo" -ForegroundColor Red
+    exit 1
+}
+
+if (-not $confFull) {
+    Write-Host "❌ Archivo de configuración no encontrado: $configuracion" -ForegroundColor Red
+    exit 1
+}
+
+# Lanzar daemon
+Start-Daemon -repoPath $repoFull -configFile $confFull -logFile $log -delay $alerta
