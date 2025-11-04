@@ -3,15 +3,15 @@
 Este proyecto consiste en un conjunto de scripts en **Bash** y **AWK** para procesar encuestas de clientes. El objetivo es calcular el **tiempo de respuesta promedio** y la **nota de satisfacción promedio** por canal de atención y por día, generando un **JSON final**.
 
 - [Explicación Código del Ejercicio 1](#explicación-código-del-ejercicio-1)
-  - [⚠️ Requisitos](#️-requisitos)
-  - [📂 Estructura del Proyecto](#-estructura-del-proyecto)
-  - [🛠 Funcionamiento del Programa](#-funcionamiento-del-programa)
+  - [Requisitos](#requisitos)
+  - [Estructura del Proyecto](#estructura-del-proyecto)
+  - [Funcionamiento del Programa](#funcionamiento-del-programa)
     - [`ejercicio1.sh`](#ejercicio1sh)
     - [`procesamiento_arch.awk`](#procesamiento_archawk)
     - [`test.sh`](#testsh)
 
 
-## ⚠️ Requisitos
+## Requisitos
 
 - Tener instalado el gestor del formato JSON
 
@@ -25,7 +25,7 @@ sudo apt install jq
 sudo apt install gawk
 ~~~
 
-## 📂 Estructura del Proyecto
+## Estructura del Proyecto
 
 ~~~
 ejercicio1
@@ -35,7 +35,7 @@ ejercicio1
   └── 2025-07-01.txt        -> Ejemplo de archivo de encuestas
 ~~~
 
-## 🛠 Funcionamiento del Programa
+## Funcionamiento del Programa
 
 ### `ejercicio1.sh`
 

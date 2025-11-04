@@ -46,7 +46,6 @@ Param(
     [Parameter(Mandatory=$false)] [switch]$help
 )
 
-
 function consultarExistenciaCache {
     param($texto)
     try {
@@ -61,6 +60,7 @@ function consultarAPI {
     param([string]$pais)
     try {
         $url = "https://restcountries.com/v3.1/name/$([uri]::EscapeDataString($pais))"
+        Write-Host "DEBUG: Consultando URL: $url" -ForegroundColor Yellow
         $resultado = Invoke-RestMethod -Uri $url -Method Get -ErrorAction Stop
         if (-not $resultado) {
             Write-Host "Error: No se encontró información para '$pais'." -ForegroundColor Red
@@ -68,7 +68,11 @@ function consultarAPI {
         }
         return $resultado[0]
     } catch {
-        Write-Host "Error al consultar API para '$pais': $($_.Exception.Message)" -ForegroundColor Red
+        if ($_.Exception.Response.StatusCode -eq 404) {
+            Write-Host "Error: No se encontró información para '$pais'." -ForegroundColor Red
+        } else {
+            Write-Host "Error al consultar API para '$pais': $($_.Exception.Message)" -ForegroundColor Red
+        }
         return $null
     }
 }
@@ -81,63 +85,77 @@ function guardarCache {
     )
 
     $ts = [int][double]::Parse((Get-Date -UFormat %s))
+    
+    # Cargar cache existente o crear nuevo
     $cache = @{}
-
-    try {
-        $contenido = Get-Content -Path $archivoCache -Raw -ErrorAction Stop
-        if (-not [string]::IsNullOrWhiteSpace($contenido) -and (consultarExistenciaCache $contenido)) {
-            $cache = $contenido | ConvertFrom-Json
+    if (Test-Path $archivoCache) {
+        try {
+            $contenido = Get-Content -Path $archivoCache -Raw -ErrorAction Stop
+            if (-not [string]::IsNullOrWhiteSpace($contenido) -and (consultarExistenciaCache $contenido)) {
+                $cache = $contenido | ConvertFrom-Json -AsHashtable
+            }
+        } catch {
+            Write-Host "Advertencia: No se pudo cargar el cache existente, creando nuevo." -ForegroundColor Yellow
+            $cache = @{}
         }
-    } catch {
-        $cache = @{}
     }
 
+    # Crear nueva entrada
     $entry = @{
         timestamp = $ts
         ttl       = $ttlEntrada
         data      = $datos
     }
 
-    if ($cache -is [System.Management.Automation.PSCustomObject]) {
-        $cache | Add-Member -NotePropertyName $pais -NotePropertyValue $entry -Force
-    } else {
-        $cache.$pais = $entry
-    }
+    $cache[$pais] = $entry
 
-    $cache | ConvertTo-Json -Depth 10 | Set-Content -Path $archivoCache -Encoding UTF8
+    try {
+        $cache | ConvertTo-Json -Depth 10 | Set-Content -Path $archivoCache -Encoding UTF8
+    } catch {
+        Write-Host "Error al guardar en cache: $($_.Exception.Message)" -ForegroundColor Red
+    }
 }
 
 function consultarCache {
     param([string]$pais)
+    
+    if (-not (Test-Path $archivoCache)) {
+        return $null
+    }
+
     $ahora = [int][double]::Parse((Get-Date -UFormat %s))
 
     try {
         $contenido = Get-Content -Path $archivoCache -Raw -ErrorAction Stop
-        if (-not $contenido -or -not (consultarExistenciaCache $contenido)) { return $null }
-        $cache = $contenido | ConvertFrom-Json
+        if (-not $contenido -or -not (consultarExistenciaCache $contenido)) { 
+            return $null 
+        }
+        $cache = $contenido | ConvertFrom-Json -AsHashtable
     } catch {
         return $null
     }
 
-    if ($null -eq $cache) { return $null }
-
-    if ($cache.PSObject.Properties.Name -contains $pais) {
-        $entry = $cache.$pais
-        if ($null -eq $entry.timestamp -or $null -eq $entry.ttl) {
-            return $null
-        }
-
-        # Compara con el TTL guardado en la entrada, no el actual
-        if (($ahora - [int]$entry.timestamp) -lt [int]$entry.ttl) {
-            return $entry.data
-        } else {
-            return $null
-        }
+    if ($null -eq $cache -or -not $cache.ContainsKey($pais)) {
+        return $null
     }
+
+    $entry = $cache[$pais]
+    if ($null -eq $entry.timestamp -or $null -eq $entry.ttl) {
+        return $null
+    }
+
+    # Compara con el TTL guardado en la entrada
+    if (($ahora - [int]$entry.timestamp) -lt [int]$entry.ttl) {
+        return $entry.data
+    }
+    
     return $null
 }
 
 # -----------------------------<PROGRAMA PRINCIPAL>-----------------------------
+
+# Inicializar variable de éxito
+$script:success = $true
 
 if ($help) {
     Get-Help $MyInvocation.MyCommand.Path -Full
@@ -163,22 +181,32 @@ if ($null -eq $ttl -or $ttl -le 0) {
 }
 
 # Separar múltiples nombres
-$nombres = $nombre -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+$nombres = @()
+foreach ($n in $nombre) {
+    $nombres += $n -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+}
+
+$paisesProcesados = 0
 
 try {
     foreach ($pais in $nombres) {
-        if ($pais -notmatch '^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$') {
-            Write-Host "Error: El nombre del país '$pais' solo puede contener letras y espacios." -ForegroundColor Red
+        # Validación más flexible de nombres de países
+        if ($pais -notmatch '^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s\-]+$') {
+            Write-Host "Error: El nombre del país '$pais' contiene caracteres no válidos." -ForegroundColor Red
+            $script:success = $false
             continue
         }
 
         $resultado = consultarCache $pais
         if ($resultado) {
-            Write-Host "Datos desde caché para '$pais':"
+            Write-Host "Datos desde caché para '$pais':" -ForegroundColor Green
         } else {
-            Write-Host "Consultando API para '$pais'..."
+            Write-Host "Consultando API para '$pais'..." -ForegroundColor Yellow
             $resultado = consultarAPI $pais
-            if (-not $resultado) { continue }
+            if (-not $resultado) {
+                $script:success = $false
+                continue
+            }
             guardarCache -pais $pais -datos $resultado -ttlEntrada $ttl
         }
 
@@ -186,7 +214,7 @@ try {
         $nombrePais   = $resultado.name.common -as [string]
         $capital      = if ($resultado.capital -and $resultado.capital.Count -gt 0) { $resultado.capital[0] } else { "N/A" }
         $region       = $resultado.region -as [string]
-        $poblacion    = $resultado.population -as [string]
+        $poblacion    = if ($resultado.population) { $resultado.population.ToString() } else { "N/A" }
         $monedaCodigo = $null
         $monedaNombre = "N/A"
 
@@ -197,7 +225,9 @@ try {
                     $monedaNombre = $resultado.currencies.$monedaCodigo.name
                 }
             }
-        } catch { $monedaNombre = "N/A" }
+        } catch { 
+            $monedaNombre = "N/A" 
+        }
 
         Write-Host "  País: $nombrePais"
         Write-Host "  Capital: $capital"
@@ -208,9 +238,17 @@ try {
         } else {
             Write-Host "  Moneda: $monedaNombre"
         }
-        Write-Host
+        Write-Host ""
+        $paisesProcesados++
     }
 } catch {
     Write-Host "Error inesperado: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+# Determinar código de salida basado en si se procesó al menos un país exitosamente
+if ($paisesProcesados -gt 0) {
+    exit 0
+} else {
     exit 1
 }

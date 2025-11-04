@@ -9,20 +9,6 @@
 #tail -f /tmp/daemon.log
 #Para visualizar el pid del deamon ejecutar en terminal: cat /tmp/daemon/daemon.pid
 
-#-------------------------------COSAS IMPORTANTES-------------------------------#
-    # No testie con una rama de git en si...
-    # Sos libre de testear porfavor :) 
-    # Deberia funcionar bien
-
-    # Debe ser un repositorio EN LINUX
-    # inotify (lo que dice si cambio algo) trabaja con el kernel UNIX
-    # pd: hacer sudo apt install inotify-tools
-    # tambien agragar que se necesita en el help
-
-    # Finalmente, son libres de cambiar cualquier cosa
-    # AGREGAR TESTS QUE NO LOS HICE AAAAA 
-    # (pidanle a chat gpt que los haga porque son re tediosos sino jajaj)
-#-------------------------------------------------------------------------------#
 LOG="/tmp/daemon.log"
 PIDFILE="/tmp/daemon/daemon.pid"
 

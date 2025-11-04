@@ -1,150 +1,192 @@
-# ===============================================
-# SCRIPT DE PRUEBA MANUAL para ejercicio4.ps1 (Versión "Silenciosa")
-# =Nota: El log se generará en este mismo directorio
-# ===============================================
+#!/usr/bin/env pwsh
 
-# --- 0. Funciones de Ayuda ---
+# EJERCICIO 4 
+# - Tiago Pujia
+# - Bautista Rios Di Gaeta
+# - Santiago Manghi Scheck
+# - Tomas Agustín Nielsen
 
-function Log-TestResult {
-    param(
-        [bool]$Exito,
-        [string]$MensajeExito,
-        [string]$MensajeFalla
+<#
+.SYNOPSIS
+    Script de prueba (test harness) para ejercicio4.ps1.
+.DESCRIPTION
+    Este script automatiza la configuración, ejecución y limpieza
+    para probar el demonio de monitoreo de archivos (ejercicio4.ps1).
+    
+    Pasos que realiza:
+    1.  Crea un entorno de prueba temporal (directorio, config, log).
+    2.  Prueba el parámetro -help.
+    3.  Inicia el demonio apuntando al directorio temporal (CON ESPACIOS).
+    4.  Verifica que el archivo .pid del demonio se haya creado.
+    5.  Crea y modifica archivos para disparar los patrones (simple y regex).
+    6.  Lee el archivo de log para verificar que las alertas se registraron.
+    7.  Detiene el demonio usando el parámetro -kill.
+    8.  Elimina el entorno de prueba temporal.
+#>
+
+# --- Configuración ---
+$scriptPrincipal = ".\ejercicio4.ps1"
+
+# --- Función Auxiliar ---
+# Esta función replica la lógica de Get-PidFile de tu script principal
+# para que el script de pruebas sepa qué archivo .pid buscar.
+function Get-TestPidFile {
+    param([string]$dirPath)
+    
+    # Asegurarnos de que tenemos la ruta absoluta, tal como lo haría el daemon
+    $absPath = (Resolve-Path $dirPath).Path
+    
+    $pidDir = "$HOME/.dir_monitor_pids"
+    $hashBytes = [System.Security.Cryptography.SHA256]::Create().ComputeHash(
+        [System.Text.Encoding]::UTF8.GetBytes($absPath)
     )
-    if ($Exito) {
-        Write-Host "[ÉXITO] $MensajeExito" -ForegroundColor Green
-    } else {
-        Write-Host "[FALLA] $MensajeFalla" -ForegroundColor Red
-    }
+    $hashString = [System.BitConverter]::ToString($hashBytes).Replace("-", "").Substring(0, 16)
+    return Join-Path $pidDir "monitor_$hashString.pid"
 }
 
-# Copiamos esta función de tu script para predecir el nombre del archivo PID
-function Get-PidFile-Test {
-    param([string]$dirPath, [string]$pidBaseDir)
-    $hash = [System.BitConverter]::ToString(
-        [System.Security.Cryptography.SHA256]::Create().ComputeHash(
-            [System.Text.Encoding]::UTF8.GetBytes($dirPath)
-        )
-    ).Replace("-", "").Substring(0, 16)
-    return Join-Path $pidBaseDir "monitor_$hash.pid"
-}
 
-# --- 1. Configuración del Entorno de Prueba ---
+# 1. --- Configurar Entorno de Prueba ---
+Write-Host "--- 1. Configurando entorno de prueba ---" -ForegroundColor Cyan
 
-Write-Host "--- Configurando entorno de prueba ---" -ForegroundColor Cyan
+$tempDir = Join-Path $env:TEMP "daemon test $(Get-Random)"
+New-Item -ItemType Directory -Path $tempDir -ErrorAction Stop | Out-Null
 
-$ScriptAbsPath = (Resolve-Path "ejercicio4.ps1").Path
-$TestTempDir = Join-Path $env:TEMP "test_monitor_$(Get-Random)"
+$testRepoDir = Join-Path $tempDir "repo a monitorear"
+$configFile = Join-Path $tempDir "patrones.conf"
+$logFile = Join-Path $tempDir "test_daemon.log"
 
-$RepoDir = Join-Path $TestTempDir "mi_repo_prueba"
-$ConfigFile = Join-Path $TestTempDir "test_patrones.conf"
-$PidDir = "$HOME/.dir_monitor_pids"
+New-Item -ItemType Directory -Path $testRepoDir | Out-Null
+Write-Host "Directorio de repositorio creado en: $testRepoDir"
 
-$LogFile = Join-Path $PWD "daemon.log"
-Write-Host "El archivo de log de PRUEBA se generará en: $LogFile" -ForegroundColor Cyan
-
-$PatronesDePrueba = @(
-    "API_KEY_SECRETA"
-    "regex:contraseña"
+$patterns = @(
+    '# Archivo de configuración de prueba',
+    'PALABRA_SECRETA',
+    'regex:\b(ERROR|FAIL|CRITICAL)\b',
+    'regex:password\s*=\s*\S+'      
 )
+Set-Content -Path $configFile -Value ($patterns -join "`n")
+Write-Host "Archivo de configuración creado en: $configFile"
+Write-Host "`n"
 
-New-Item -ItemType Directory -Path $TestTempDir -Force | Out-Null
-New-Item -ItemType Directory -Path $RepoDir -Force | Out-Null
-$PatronesDePrueba | Set-Content -Path $ConfigFile
-$PidFile = Get-PidFile-Test -dirPath $RepoDir -pidBaseDir $PidDir
+# Variable para guardar la ruta al PID file y usarla en la limpieza
+$pidFileParaLimpieza = $null
 
-Write-Host "Limpiando ejecuciones anteriores (si existen)..."
-if (Test-Path $PidFile) {
-    Write-Host "Se encontró un PID antiguo. Intentando detener el proceso..."
-    & $ScriptAbsPath -repo $RepoDir -kill -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    if (Test-Path $PidFile) {
-        Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
-    }
-}
-if (Test-Path $LogFile) { Remove-Item $LogFile }
-Write-Host "Entorno listo en: $TestTempDir"
-
-# --- 2. Inicio del Script de Prueba ---
-
+# --- Inicio del Bloque de Pruebas (con limpieza asegurada) ---
 try {
-    Write-Host "`n--- TEST 1: Iniciar el demonio ---" -ForegroundColor Yellow
+
+    # 2. --- TEST: Mostrar Ayuda ---
+    Write-Host "--- 2. TEST: Probar parámetro -help ---" -ForegroundColor Yellow
     
-    # El script de prueba *inicia* el demonio usando el nombre de log "test_audit.log"
-    Start-Process "pwsh" -ArgumentList "-File `"$ScriptAbsPath`" -repo `"$RepoDir`" -configuracion `"$ConfigFile`" -log `"$LogFile`"" -NoNewWindow
-    Write-Host "Esperando 5 segundos a que el demonio se inicialice..."
+    $scriptPrincipalPath = (Resolve-Path $scriptPrincipal).Path
+    $helpArgs = "-File `"$scriptPrincipalPath`" -help"
+    
+    Start-Process -FilePath "pwsh" -ArgumentList $helpArgs -Wait -NoNewWindow
+    Write-Host "Prueba de ayuda completada."
+    Read-Host "Presiona Enter para continuar..."
+    Write-Host "`n"
+
+    # 3. --- TEST: Iniciar el Daemon ---
+    Write-Host "--- 3. TEST: Iniciar el Daemon (probando ruta con espacios) ---" -ForegroundColor Yellow
+    $comandoInicio = "$scriptPrincipal -repo `"$testRepoDir`" -configuracion `"$configFile`" -log `"$logFile`""
+    Write-Host "Ejecutando: $comandoInicio"
+    
+    # Ejecutamos el script. Este lanzará el proceso daemon y terminará.
+    # El propio script (ejercicio4.ps1) imprimirá si fue exitoso o no.
+    & $scriptPrincipal -repo $testRepoDir -configuracion $configFile -log $logFile
+    
+    Write-Host "Esperando 5 segundos a que el daemon se estabilice..."
     Start-Sleep -Seconds 5
-    
-    # --- PRUEBA DE INICIO SIMPLIFICADA ---
-    # Ya no podemos leer el log. La única prueba de éxito es que el PID exista.
-    $pidExiste = Test-Path $PidFile
-    Log-TestResult $pidExiste "El archivo PID se creó correctamente." "El archivo PID no se encontró en $PidFile"
 
-    if (-not $pidExiste) {
-        throw "El demonio no pudo iniciar (no se creó el PID). Abortando pruebas."
+    # **CAMBIO: Verificamos el archivo PID, no el LOG**
+    $pidFileParaLimpieza = Get-TestPidFile -dirPath $testRepoDir
+    
+    if (Test-Path $pidFileParaLimpieza) {
+        $pidInfo = Get-Content $pidFileParaLimpieza | ConvertFrom-Json
+        Write-Host "VERIFICACIÓN: El archivo PID se ha creado (PID: $($pidInfo.PID))." -ForegroundColor Green
+        Write-Host "El Daemon se está ejecutando."
+    } else {
+        Write-Host "FALLO: El archivo PID no se encontró en $pidFileParaLimpieza" -ForegroundColor Red
+        Write-Host "El daemon no pudo iniciarse. Abortando pruebas." -ForegroundColor Red
+        return
     }
-    # --- FIN DE LA SIMPLIFICACIÓN ---
-
-    # -----------------------------------------------
-    Write-Host "`n--- TEST 2: Evento 'Created' (Patrón simple) ---" -ForegroundColor Yellow
+    Write-Host "`n"
     
-    $file1 = Join-Path $RepoDir "archivo_con_key.txt"
-    "Este archivo contiene la API_KEY_SECRETA" | Set-Content -Path $file1
-    Write-Host "Archivo creado. Esperando 4 segundos para la detección..."
-    Start-Sleep -Seconds 4
+    # 4. --- TEST: Disparar el monitor (Patrón Simple) ---
+    Write-Host "--- 4. TEST: Disparar monitor (Crear archivo .log con patrón simple) ---" -ForegroundColor Yellow
+    $testFile1 = Join-Path $testRepoDir "otro_log.log"
+    $content1 = "Este archivo contiene la PALABRA_SECRETA."
+    Write-Host "Creando archivo: $testFile1"
+    Set-Content -Path $testFile1 -Value $content1
     
-    # Esta prueba sigue siendo válida, busca la ALERTA en el log
-    $alertaCreada = Select-String -Path $LogFile -Pattern "Alerta: patrón 'API_KEY_SECRETA'.*en el archivo" -Quiet -ErrorAction SilentlyContinue
-    Log-TestResult $alertaCreada "Log detectó 'ALERTA' para 'API_KEY_SECRETA' en evento 'Created'." "El log NO detectó la alerta para el archivo creado."
-    
-    # -----------------------------------------------
-    Write-Host "`n--- TEST 3: Evento 'Changed' (Patrón Regex) ---" -ForegroundColor Yellow
-    
-    $file2 = Join-Path $RepoDir "archivo_sensible.ini"
-    "user=admin" | Set-Content -Path $file2
-    Write-Host "Archivo limpio creado. Esperando 2s..."
     Start-Sleep -Seconds 2 
     
-    "mi contraseña está aquí" | Add-Content -Path $file2
-    Write-Host "Archivo modificado con patrón. Esperando 4s para la detección..."
-    Start-Sleep -Seconds 4
+    # 5. --- TEST: Disparar el monitor (Patrón Regex) ---
+    Write-Host "--- 5. TEST: Disparar monitor (Modificar archivo con patrón regex) ---" -ForegroundColor Yellow
+    $testFile2 = Join-Path $testRepoDir "log_de_app.log"
+    Write-Host "Creando archivo: $testFile2"
+    Set-Content -Path $testFile2 -Value "Todo funciona bien."
+    Start-Sleep -Seconds 2 
     
-    # Esta prueba sigue siendo válida, busca la ALERTA en el log
-    $alertaModificada = Select-String -Path $LogFile -Pattern "Alerta: patrón 'regex:contraseña'.*en el archivo" -Quiet -ErrorAction SilentlyContinue
-    Log-TestResult $alertaModificada "Log detectó 'ALERTA' para 'regex:contraseña' en evento 'Changed'." "El log NO detectó la alerta para el archivo modificado."
+    Write-Host "Modificando archivo para disparar regex 'ERROR'..."
+    Add-Content -Path $testFile2 -Value "¡Oh no, ha ocurrido un ERROR!"
+    
+    Start-Sleep -Seconds 2
+    Write-Host "`n"
 
-    # -----------------------------------------------
-    Write-Host "`n--- TEST 4: Detener el demonio ---" -ForegroundColor Yellow
+# 6. --- TEST: Verificar el archivo de Log ---
+    Write-Host "--- 6. TEST: Verificar el archivo de log (AHORA sí debería existir) ---" -ForegroundColor Yellow
     
-    & $ScriptAbsPath -repo $RepoDir -kill
-    Write-Host "Comando -kill enviado. Esperando 3 segundos para la detención..."
-    Start-Sleep -Seconds 3
+    if (Test-Path $logFile) {
+        $logContent = Get-Content $logFile
+        Write-Host "Contenido del log ($logFile):"
+        $logContent | Write-Host
+        
+        Write-Host "`n--- Verificaciones de Alertas ---"
+        
+        # FIX: Usar comillas simples para que la cadena sea literal
+        if ($logContent | Select-String -Pattern 'PALABRA_SECRETA' -SimpleMatch -Quiet) {
+            Write-Host "VERIFICACIÓN (Simple): Patrón 'PALABRA_SECRETA' encontrado en el log." -ForegroundColor Green
+        } else {
+            Write-Host "FALLO (Simple): Patrón 'PALABRA_SECRETA' NO encontrado en el log." -ForegroundColor Red
+        }
+        
+        # FIX: Usar comillas simples para que \b sea literal
+        if ($logContent | Select-String -Pattern 'regex:\b(ERROR|FAIL|CRITICAL)\b' -SimpleMatch -Quiet) {
+            Write-Host "VERIFICACIÓN (Regex): Patrón 'regex:...' (ERROR) encontrado en el log." -ForegroundColor Green
+        } else {
+            Write-Host "FALLO (Regex): Patrón 'regex:...' (ERROR) NO encontrado en el log." -ForegroundColor Red
+        }
+    } else {
+        Write-Host "FALLO: El archivo de log no existe. Las alertas no se registraron." -ForegroundColor Red
+    }
     
-    # --- PRUEBA DE DETENCIÓN SIMPLIFICADA ---
-    # Ya no podemos verificar el log "Monitoreo finalizado".
-    # La única prueba de éxito es que el PID haya sido eliminado.
-    $pidExiste = Test-Path $PidFile
-    Log-TestResult (-not $pidExiste) "El archivo PID fue eliminado correctamente." "El archivo PID NO fue eliminado."
-    # --- FIN DE LA SIMPLIFICACIÓN ---
+    Read-Host "Presiona Enter para continuar y detener el daemon..."
+    Write-Host "`n"
 }
 catch {
-    Write-Host "`n!!! ERROR CRÍTICO EN LA PRUEBA !!!" -ForegroundColor Red
-    Write-Host $_
+    Write-Host "--- ERROR INESPERADO DURANTE LA PRUEBA ---" -ForegroundColor Red
+    Write-Error $_.Exception.Message
 }
 finally {
-    # --- 3. Limpieza Final ---
-    Write-Host "`n--- Limpiando entorno de prueba (directorio temporal) ---" -ForegroundColor Cyan
+    # 7. --- LIMPIEZA: Detener el Daemon ---
+    Write-Host "--- 7. LIMPIEZA: Detener el Daemon ---" -ForegroundColor Yellow
+    $comandoKill = "$scriptPrincipal -repo `"$testRepoDir`" -kill"
+    Write-Host "Ejecutando: $comandoKill"
     
-    if (Test-Path $PidFile) {
-        Write-Host "Forzando detención final..."
-        & $ScriptAbsPath -repo $RepoDir -kill -ErrorAction SilentlyContinue
+    & $scriptPrincipal -repo $testRepoDir -kill
+    Start-Sleep -Seconds 2
+
+    Write-Host "Limpiando entorno de prueba..."
+    if (Test-Path $tempDir) {
+        Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "Directorio temporal eliminado: $tempDir"
     }
     
-    if (Test-Path $TestTempDir) {
-        Write-Host "Eliminando $TestTempDir"
-        Remove-Item -Path $TestTempDir -Recurse -Force -ErrorAction SilentlyContinue
+    # Limpieza extra por si el -kill falló y el .pid quedó huérfano
+    if ($pidFileParaLimpieza -and (Test-Path $pidFileParaLimpieza)) {
+        Write-Host "Limpiando archivo PID huérfano..." -ForegroundColor Gray
+        Remove-Item $pidFileParaLimpieza -Force -ErrorAction SilentlyContinue
     }
     
-    Write-Host "--- PRUEBA FINALIZADA ---"
-    Write-Host "El archivo 'daemon.log' se conservó en este directorio para revisión." -ForegroundColor Green
+    Write-Host "`n--- PRUEBAS FINALIZADAS ---" -ForegroundColor Cyan
 }

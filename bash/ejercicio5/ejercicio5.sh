@@ -55,17 +55,24 @@ EJEMPLOS
 EOF
 }
 
-
 # Consulta API
 consultar_api() {
     local pais="$1"
     local url="https://restcountries.com/v3.1/name/$pais"
     local resultadoAPI
-    resultadoAPI=$(curl -s "$url")
-    if [[ -z "$resultadoAPI" || "$resultadoAPI" == "[]" ]]; then
+    resultadoAPI=$(curl -s -f "$url")
+    local curl_exit_code=$?
+    
+    if [[ $curl_exit_code -ne 0 ]] || [[ -z "$resultadoAPI" ]]; then
+        echo "Error: No se pudo conectar a la API para '$pais'." >&2
+        return 1
+    fi
+    
+    if [[ "$resultadoAPI" == "[]" ]] || ! echo "$resultadoAPI" | jq -e '.[0]' >/dev/null 2>&1; then
         echo "Error: No se encontró información para '$pais'." >&2
         return 1
     fi
+    
     echo "$resultadoAPI" | jq '.[0]'
 }
 
@@ -148,11 +155,10 @@ if ! [[ "$ttl" =~ ^[0-9]+$ ]] || [[ $ttl -le 0 ]]; then
     exit 1
 fi
 
-
 for pais in "${nombres[@]}"; do
     pais=$(echo "$pais" | xargs)  
 
-    if ! [[ "$pais" =~ ^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$ ]]; then
+    if ! [[ "$pais" =~ ^[a-zA-ZñÑáéíóúÁÉÍÓÚ[:space:]-]+$ ]]; then
         echo "Error: El nombre del país '$pais' solo puede contener letras y espacios." >&2
         continue
     fi
@@ -181,5 +187,4 @@ for pais in "${nombres[@]}"; do
     echo "  Región: $region"
     echo "  Población: $poblacion"
     echo "  Moneda: $moneda_nombre ($moneda_codigo)"
-    echo
 done

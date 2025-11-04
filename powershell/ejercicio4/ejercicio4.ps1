@@ -158,7 +158,7 @@ function Scan-FileContent {
                 
                 if ($found) {
                     $matchesFound++
-                    $msg = "Alerta: patrón '$($pattern.Display)' encontrado en el archivo '$filePath'."
+                    $msg = "Alerta: patrón '{0}' encontrado en el archivo '{1}'." -f $pattern.Display, $filePath
                     Write-Log -message $msg -logFile $logFile
                 }
             }
@@ -331,17 +331,15 @@ function Start-Daemon {
 
     $scriptPath = $MyInvocation.PSCommandPath
     
-    $daemonArgs = @(
-        "-File", $scriptPath,
-        "-__daemon",
-        "-repo", $dirPath,
-        "-configuracion", $configFile,
-        "-log", $logFile
-    )
+    # Construimos una sola cadena de argumentos, poniendo comillas dobles
+    # alrededor de todas las rutas que puedan contener espacios.
+    $argString = "-File `"$scriptPath`" -__daemon -repo `"$dirPath`" -configuracion `"$configFile`" -log `"$finalLogPath`""
 
     Write-Host "`nLanzando daemon en segundo plano..." -ForegroundColor Cyan
+    Write-Host "Comando: pwsh $argString" -ForegroundColor Gray
 
-    Start-Process -FilePath "pwsh" -ArgumentList $daemonArgs -NoNewWindow
+    # Pasamos la cadena de texto completa a -ArgumentList
+    Start-Process -FilePath "pwsh" -ArgumentList $argString -NoNewWindow
     
     Write-Host "Esperando la creación del archivo PID del demonio..."
     Start-Sleep -Seconds 3
