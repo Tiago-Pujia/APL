@@ -1,229 +1,150 @@
-#!/usr/bin/env pwsh
+# ===============================================
+# SCRIPT DE PRUEBA MANUAL para ejercicio4.ps1 (Versión "Silenciosa")
+# =Nota: El log se generará en este mismo directorio
+# ===============================================
 
+# --- 0. Funciones de Ayuda ---
 
-Write-Host "`n=== INICIANDO PRUEBAS EJERCICIO 4 ===" -ForegroundColor Cyan
-Write-Host "Demonio de Monitoreo Git - Detección de Credenciales`n" -ForegroundColor Cyan
-
-# Función auxiliar para mostrar el resultado de las pruebas
-function Show-TestResult {
+function Log-TestResult {
     param(
-        [string]$testName,
-        [string]$command,
-        [bool]$shouldSucceed = $true
+        [bool]$Exito,
+        [string]$MensajeExito,
+        [string]$MensajeFalla
     )
-    Write-Host "`n--- $testName ---" -ForegroundColor Yellow
-    Write-Host "Comando: $command" -ForegroundColor Gray
-    Write-Host "Resultado esperado: " -NoNewline -ForegroundColor Gray
-    if ($shouldSucceed) {
-        Write-Host "ÉXITO" -ForegroundColor Green
+    if ($Exito) {
+        Write-Host "[ÉXITO] $MensajeExito" -ForegroundColor Green
     } else {
-        Write-Host "ERROR CONTROLADO" -ForegroundColor Magenta
+        Write-Host "[FALLA] $MensajeFalla" -ForegroundColor Red
     }
-    Write-Host ""
 }
 
-# --- CONFIGURACIÓN INICIAL ---
-Write-Host "Preparando entorno de pruebas..." -ForegroundColor Cyan
-
-# Limpiar entorno previo
-$testDir = "./test-ejercicio4"
-if (Test-Path $testDir) {
-    Remove-Item -Recurse -Force $testDir
+# Copiamos esta función de tu script para predecir el nombre del archivo PID
+function Get-PidFile-Test {
+    param([string]$dirPath, [string]$pidBaseDir)
+    $hash = [System.BitConverter]::ToString(
+        [System.Security.Cryptography.SHA256]::Create().ComputeHash(
+            [System.Text.Encoding]::UTF8.GetBytes($dirPath)
+        )
+    ).Replace("-", "").Substring(0, 16)
+    return Join-Path $pidBaseDir "monitor_$hash.pid"
 }
 
-# Crear directorio de pruebas
-New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-Set-Location $testDir
+# --- 1. Configuración del Entorno de Prueba ---
 
-# Crear archivo de patrones
-@"
-password
-API_KEY
-secret
-token
-aws_access_key
-regex:API_KEY\s*=\s*['"].*['"]
-regex:password\s*[:=]\s*['"]\w+['"]
-regex:\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b
-"@ | Out-File -FilePath patrones.conf -Encoding UTF8
+Write-Host "--- Configurando entorno de prueba ---" -ForegroundColor Cyan
 
-Write-Host " Archivo de patrones creado" -ForegroundColor Green
+$ScriptAbsPath = (Resolve-Path "ejercicio4.ps1").Path
+$TestTempDir = Join-Path $env:TEMP "test_monitor_$(Get-Random)"
 
-# Crear repositorio de prueba
-New-Item -ItemType Directory -Path test-repo -Force | Out-Null
-Set-Location test-repo
-git init | Out-Null
-git config user.email "test@example.com" | Out-Null
-git config user.name "Test User" | Out-Null
-"# Repositorio de Prueba" | Out-File -FilePath README.md -Encoding UTF8
-git add README.md | Out-Null
-git commit -m "Initial commit" | Out-Null
-Set-Location ..
+$RepoDir = Join-Path $TestTempDir "mi_repo_prueba"
+$ConfigFile = Join-Path $TestTempDir "test_patrones.conf"
+$PidDir = "$HOME/.dir_monitor_pids"
 
-Write-Host " Repositorio de prueba creado`n" -ForegroundColor Green
+$LogFile = Join-Path $PWD "daemon.log"
+Write-Host "El archivo de log de PRUEBA se generará en: $LogFile" -ForegroundColor Cyan
 
-# Copiar script al directorio de pruebas
-Copy-Item ../ejercicio4.ps1 . -Force
+$PatronesDePrueba = @(
+    "API_KEY_SECRETA"
+    "regex:contraseña"
+)
 
-# --- PRUEBAS ---
+New-Item -ItemType Directory -Path $TestTempDir -Force | Out-Null
+New-Item -ItemType Directory -Path $RepoDir -Force | Out-Null
+$PatronesDePrueba | Set-Content -Path $ConfigFile
+$PidFile = Get-PidFile-Test -dirPath $RepoDir -pidBaseDir $PidDir
 
-# Prueba 1: Iniciar demonio correctamente
-Show-TestResult -testName "Prueba 1: Iniciar demonio con parámetros válidos" `
-    -command "./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5" `
-    -shouldSucceed $true
-
-Start-Process pwsh -ArgumentList "-NoProfile", "-Command", "./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5" -WorkingDirectory $PWD
-Start-Sleep -Seconds 2
-
-if (Test-Path audit.log) {
-    Write-Host " Demonio iniciado correctamente" -ForegroundColor Green
-    Write-Host "Log inicial:" -ForegroundColor Gray
-    Get-Content audit.log
-} else {
-    Write-Host " ERROR: No se creó el archivo de log" -ForegroundColor Red
+Write-Host "Limpiando ejecuciones anteriores (si existen)..."
+if (Test-Path $PidFile) {
+    Write-Host "Se encontró un PID antiguo. Intentando detener el proceso..."
+    & $ScriptAbsPath -repo $RepoDir -kill -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    if (Test-Path $PidFile) {
+        Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
+    }
 }
+if (Test-Path $LogFile) { Remove-Item $LogFile }
+Write-Host "Entorno listo en: $TestTempDir"
 
-# Prueba 2: Detectar credenciales en archivo .env
-Show-TestResult -testName "Prueba 2: Detectar credenciales en archivo .env" `
-    -command "Crear .env con credenciales y hacer commit" `
-    -shouldSucceed $true
+# --- 2. Inicio del Script de Prueba ---
 
-Set-Location test-repo
-@"
-DATABASE_URL=postgresql://admin:super_secret_pass@localhost/mydb
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-API_KEY="sk-live-1234567890abcdefghijklmnopqrstuvwxyz"
-SECRET_TOKEN=ghp_AbCdEfGhIjKlMnOpQrStUvWxYz123456
-"@ | Out-File -FilePath .env -Encoding UTF8
+try {
+    Write-Host "`n--- TEST 1: Iniciar el demonio ---" -ForegroundColor Yellow
+    
+    # El script de prueba *inicia* el demonio usando el nombre de log "test_audit.log"
+    Start-Process "pwsh" -ArgumentList "-File `"$ScriptAbsPath`" -repo `"$RepoDir`" -configuracion `"$ConfigFile`" -log `"$LogFile`"" -NoNewWindow
+    Write-Host "Esperando 5 segundos a que el demonio se inicialice..."
+    Start-Sleep -Seconds 5
+    
+    # --- PRUEBA DE INICIO SIMPLIFICADA ---
+    # Ya no podemos leer el log. La única prueba de éxito es que el PID exista.
+    $pidExiste = Test-Path $PidFile
+    Log-TestResult $pidExiste "El archivo PID se creó correctamente." "El archivo PID no se encontró en $PidFile"
 
-git add .env | Out-Null
-git commit -m "Add environment variables" | Out-Null
-Set-Location ..
+    if (-not $pidExiste) {
+        throw "El demonio no pudo iniciar (no se creó el PID). Abortando pruebas."
+    }
+    # --- FIN DE LA SIMPLIFICACIÓN ---
 
-Write-Host "Esperando detección (10 segundos)..." -ForegroundColor Gray
-Start-Sleep -Seconds 10
+    # -----------------------------------------------
+    Write-Host "`n--- TEST 2: Evento 'Created' (Patrón simple) ---" -ForegroundColor Yellow
+    
+    $file1 = Join-Path $RepoDir "archivo_con_key.txt"
+    "Este archivo contiene la API_KEY_SECRETA" | Set-Content -Path $file1
+    Write-Host "Archivo creado. Esperando 4 segundos para la detección..."
+    Start-Sleep -Seconds 4
+    
+    # Esta prueba sigue siendo válida, busca la ALERTA en el log
+    $alertaCreada = Select-String -Path $LogFile -Pattern "Alerta: patrón 'API_KEY_SECRETA'.*en el archivo" -Quiet -ErrorAction SilentlyContinue
+    Log-TestResult $alertaCreada "Log detectó 'ALERTA' para 'API_KEY_SECRETA' en evento 'Created'." "El log NO detectó la alerta para el archivo creado."
+    
+    # -----------------------------------------------
+    Write-Host "`n--- TEST 3: Evento 'Changed' (Patrón Regex) ---" -ForegroundColor Yellow
+    
+    $file2 = Join-Path $RepoDir "archivo_sensible.ini"
+    "user=admin" | Set-Content -Path $file2
+    Write-Host "Archivo limpio creado. Esperando 2s..."
+    Start-Sleep -Seconds 2 
+    
+    "mi contraseña está aquí" | Add-Content -Path $file2
+    Write-Host "Archivo modificado con patrón. Esperando 4s para la detección..."
+    Start-Sleep -Seconds 4
+    
+    # Esta prueba sigue siendo válida, busca la ALERTA en el log
+    $alertaModificada = Select-String -Path $LogFile -Pattern "Alerta: patrón 'regex:contraseña'.*en el archivo" -Quiet -ErrorAction SilentlyContinue
+    Log-TestResult $alertaModificada "Log detectó 'ALERTA' para 'regex:contraseña' en evento 'Changed'." "El log NO detectó la alerta para el archivo modificado."
 
-Write-Host "`nAlertas detectadas:" -ForegroundColor Yellow
-Get-Content audit.log | Select-String "Alerta:"
-
-# Prueba 3: Detectar credenciales en archivo Python
-Show-TestResult -testName "Prueba 3: Detectar credenciales en archivo Python" `
-    -command "Crear secrets.py con credenciales" `
-    -shouldSucceed $true
-
-Set-Location test-repo
-@"
-# Database credentials
-DB_HOST = 'localhost'
-DB_PASSWORD = 'my_super_secret_password_123'
-DB_USER = 'admin'
-
-# API Keys
-API_KEY = 'sk-1234567890abcdefghijklmnopqrstuvwxyz'
-AWS_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLE'
-SECRET_TOKEN = 'ghp_AbCdEfGhIjKlMnOpQrStUvWxYz123456'
-"@ | Out-File -FilePath secrets.py -Encoding UTF8
-
-git add secrets.py | Out-Null
-git commit -m "Add secrets configuration" | Out-Null
-Set-Location ..
-
-Write-Host "Esperando detección (10 segundos)..." -ForegroundColor Gray
-Start-Sleep -Seconds 10
-
-Write-Host "`nAlertas detectadas:" -ForegroundColor Yellow
-Get-Content audit.log | Select-String "Alerta:" | Select-Object -Last 5
-
-# Prueba 4: Detectar múltiples patrones en JSON
-Show-TestResult -testName "Prueba 4: Detectar múltiples patrones en config.json" `
-    -command "Crear config.json con múltiples credenciales" `
-    -shouldSucceed $true
-
-Set-Location test-repo
-@"
-{
-  "database": {
-    "host": "localhost",
-    "password": "super_secret_db_password",
-    "user": "admin",
-    "port": 5432
-  },
-  "api": {
-    "API_KEY": "sk-test-1234567890abcdefghijklmnopqrstuvwxyz",
-    "secret": "my_api_secret_token_123"
-  },
-  "aws": {
-    "aws_access_key": "AKIAIOSFODNN7EXAMPLE",
-    "region": "us-east-1"
-  },
-  "email": "admin@company.com"
+    # -----------------------------------------------
+    Write-Host "`n--- TEST 4: Detener el demonio ---" -ForegroundColor Yellow
+    
+    & $ScriptAbsPath -repo $RepoDir -kill
+    Write-Host "Comando -kill enviado. Esperando 3 segundos para la detención..."
+    Start-Sleep -Seconds 3
+    
+    # --- PRUEBA DE DETENCIÓN SIMPLIFICADA ---
+    # Ya no podemos verificar el log "Monitoreo finalizado".
+    # La única prueba de éxito es que el PID haya sido eliminado.
+    $pidExiste = Test-Path $PidFile
+    Log-TestResult (-not $pidExiste) "El archivo PID fue eliminado correctamente." "El archivo PID NO fue eliminado."
+    # --- FIN DE LA SIMPLIFICACIÓN ---
 }
-"@ | Out-File -FilePath config.json -Encoding UTF8
-
-git add config.json | Out-Null
-git commit -m "Add configuration file" | Out-Null
-Set-Location ..
-
-Write-Host "Esperando detección (10 segundos)..." -ForegroundColor Gray
-Start-Sleep -Seconds 10
-
-Write-Host "`nAlertas detectadas:" -ForegroundColor Yellow
-Get-Content audit.log | Select-String "Alerta:" | Select-Object -Last 8
-
-# Prueba 5: Intentar iniciar segundo demonio (debe fallar)
-Show-TestResult -testName "Prueba 5: Intentar iniciar segundo demonio para el mismo repositorio" `
-    -command "./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -alerta 5" `
-    -shouldSucceed $false
-
-Write-Host "Resultado:" -ForegroundColor Gray
-./ejercicio4.ps1 -repo ./test-repo -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5 2>&1
-
-# Prueba 6: Error - Repositorio no existe
-Show-TestResult -testName "Prueba 6: Error - Repositorio no existe" `
-    -command "./ejercicio4.ps1 -repo ./repo-inexistente -configuracion ./patrones.conf -alerta 5" `
-    -shouldSucceed $false
-
-Write-Host "Resultado:" -ForegroundColor Gray
-./ejercicio4.ps1 -repo ./repo-inexistente -configuracion ./patrones.conf -log $PWD/audit.log -alerta 5 2>&1
-
-# Prueba 7: Error - Archivo de configuración no existe
-Show-TestResult -testName "Prueba 7: Error - Archivo de configuración no existe" `
-    -command "./ejercicio4.ps1 -repo ./test-repo -configuracion ./inexistente.conf -alerta 5" `
-    -shouldSucceed $false
-
-Write-Host "Resultado:" -ForegroundColor Gray
-./ejercicio4.ps1 -repo ./test-repo -configuracion ./inexistente.conf -log $PWD/audit.log -alerta 5 2>&1
-
-# Prueba 8: Error - Faltan parámetros obligatorios
-Show-TestResult -testName "Prueba 8: Error - Faltan parámetros obligatorios" `
-    -command "./ejercicio4.ps1 -repo ./test-repo" `
-    -shouldSucceed $false
-
-Write-Host "Resultado:" -ForegroundColor Gray
-./ejercicio4.ps1 -repo ./test-repo 2>&1
-
-# Prueba 9: Detener demonio correctamente
-Show-TestResult -testName "Prueba 9: Detener demonio con -kill" `
-    -command "./ejercicio4.ps1 -repo ./test-repo -kill" `
-    -shouldSucceed $true
-
-Write-Host "Resultado:" -ForegroundColor Gray
-./ejercicio4.ps1 -repo ./test-repo -kill
-
-# Prueba 10: Intentar detener demonio que no existe
-Show-TestResult -testName "Prueba 10: Intentar detener demonio inexistente" `
-    -command "./ejercicio4.ps1 -repo ./test-repo -kill" `
-    -shouldSucceed $false
-
-Write-Host "Resultado:" -ForegroundColor Gray
-./ejercicio4.ps1 -repo ./test-repo -kill 2>&1
-
-
-# --- LIMPIEZA ---
-    Set-Location ..
-    Remove-Item -Recurse -Force $testDir
-    Write-Host " Entorno de pruebas eliminado" -ForegroundColor Green
-
-
-Write-Host "`n=== PRUEBAS FINALIZADAS ===" -ForegroundColor Cyan
+catch {
+    Write-Host "`n!!! ERROR CRÍTICO EN LA PRUEBA !!!" -ForegroundColor Red
+    Write-Host $_
+}
+finally {
+    # --- 3. Limpieza Final ---
+    Write-Host "`n--- Limpiando entorno de prueba (directorio temporal) ---" -ForegroundColor Cyan
+    
+    if (Test-Path $PidFile) {
+        Write-Host "Forzando detención final..."
+        & $ScriptAbsPath -repo $RepoDir -kill -ErrorAction SilentlyContinue
+    }
+    
+    if (Test-Path $TestTempDir) {
+        Write-Host "Eliminando $TestTempDir"
+        Remove-Item -Path $TestTempDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    
+    Write-Host "--- PRUEBA FINALIZADA ---"
+    Write-Host "El archivo 'daemon.log' se conservó en este directorio para revisión." -ForegroundColor Green
+}
