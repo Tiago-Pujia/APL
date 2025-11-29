@@ -45,28 +45,77 @@ BEGIN {
 }
 
 END {
-    printf "{"
-    firstDay = 1
-
+    # Crear array ordenado de fechas
+    n = 0
     for (key in suma_tiempo) {
         split(key, partes, "|")
         dia = partes[1]
-        canal = partes[2]
-
-        tiempo_prom = suma_tiempo[key] / cuenta[key]
-        nota_prom   = suma_nota[key] / cuenta[key]
-
-        if (!(dia in usado_dia)) {
-            if (!firstDay) { printf "}," }
-            printf "\"%s\":{", dia
-            usado_dia[dia] = 1
-            firstDay = 0
-            sep_canal = ""
+        if (!(dia in dias_unicos)) {
+            dias_unicos[dia] = 1
+            dias_array[++n] = dia
         }
+    }
 
-        if (sep_canal != "") { printf "," }
-        printf "\"%s\":{\"tiempo_respuesta_promedio\":%.2f,\"nota_satisfaccion_promedio\":%.2f}", canal, tiempo_prom, nota_prom
-        sep_canal = ","
+    # Ordenar las fechas (array de strings que son fechas YYYY-MM-DD)
+    for (i = 1; i <= n; i++) {
+        for (j = i + 1; j <= n; j++) {
+            if (dias_array[i] > dias_array[j]) {
+                temp = dias_array[i]
+                dias_array[i] = dias_array[j]
+                dias_array[j] = temp
+            }
+        }
+    }
+
+    printf "{"
+    firstDay = 1
+
+    # Iterar por fechas ordenadas
+    for (i = 1; i <= n; i++) {
+        dia = dias_array[i]
+        
+        if (!firstDay) { printf "}," }
+        printf "\"%s\":{", dia
+        firstDay = 0
+        
+        sep_canal = ""
+        # Obtener todos los canales para este día
+        canal_count = 0
+        for (key in suma_tiempo) {
+            split(key, partes, "|")
+            if (partes[1] == dia) {
+                canal_array[++canal_count] = partes[2]
+            }
+        }
+        
+        # Ordenar canales alfabéticamente
+        for (j = 1; j <= canal_count; j++) {
+            for (k = j + 1; k <= canal_count; k++) {
+                if (canal_array[j] > canal_array[k]) {
+                    temp = canal_array[j]
+                    canal_array[j] = canal_array[k]
+                    canal_array[k] = temp
+                }
+            }
+        }
+        
+        # Imprimir canales ordenados
+        for (j = 1; j <= canal_count; j++) {
+            canal = canal_array[j]
+            key = dia "|" canal
+            
+            tiempo_prom = suma_tiempo[key] / cuenta[key]
+            nota_prom   = suma_nota[key] / cuenta[key]
+            
+            if (sep_canal != "") { printf "," }
+            # Formatear nota como entero si es un número entero
+            if (nota_prom == int(nota_prom)) {
+                printf "\"%s\":{\"tiempo_respuesta_promedio\":%.1f,\"nota_satisfaccion_promedio\":%d}", canal, tiempo_prom, int(nota_prom)
+            } else {
+                printf "\"%s\":{\"tiempo_respuesta_promedio\":%.1f,\"nota_satisfaccion_promedio\":%.2f}", canal, tiempo_prom, nota_prom
+            }
+            sep_canal = ","
+        }
     }
 
     printf "}}"
