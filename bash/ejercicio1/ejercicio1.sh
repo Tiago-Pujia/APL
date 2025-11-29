@@ -70,7 +70,7 @@ while true; do
         -d|--directorio) directorio="$2"; shift 2 ;;
         -a|--archivo)    archivo="$2";    shift 2 ;;
         -p|--pantalla)   pantalla=true;   shift   ;;
-        -h|--help)       ayuda();         exit 0  ;;
+        -h|--help)       ayuda; exit 0    ;;
         --) shift; break ;;
         *) echo "Opción inválida: $1"; exit 1 ;;
     esac
@@ -114,7 +114,7 @@ if [ ${#files[@]} -eq 0 ]; then # Verificar si el array está vacío (no hay arc
     salida="{}"
     echo "No hay archivos en el directorio especificado"
 else # Si hay archivos, procesarlos con awk y formatear con jq
-    salida=$(./procesamiento_arch.awk "${files[@]}" | jq '.' 2>/dev/null)
+    salida=$(awk -f procesamiento_arch.awk "${files[@]}" | jq '.' 2>/dev/null)
     
     if [[ -z "$salida" ]]; then
         salida="{}"
