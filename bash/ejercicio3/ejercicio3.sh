@@ -73,7 +73,7 @@ do
             echo "El parámetro -p o --palabras tiene las siguientes palabras: $palabras"
             ;;
         -h | --help)
-            cat help.txt
+            ayuda
             exit 0
             ;;
         --) # case "--":
