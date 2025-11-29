@@ -166,7 +166,8 @@ while [[ $# -gt 0 ]]; do
         -c|--configuracion) CONFIG="$2"; shift 2 ;;
         -r|--repo) REPO="$2";            shift 2 ;;
         -k|--kill) ACTION="stop";        shift 1 ;;
-        -h|--help) ayuda();              exit  0 ;;
+        -l|--log) LOG="$2";              shift 2 ;;
+        -h|--help) ayuda                 exit  0 ;;
         *) echo "Uso: $0 [-c config] [-k] [-h]"; exit 1 ;;
     esac
 done
