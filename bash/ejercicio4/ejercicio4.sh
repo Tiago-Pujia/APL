@@ -10,7 +10,7 @@
 #Para visualizar el pid del deamon ejecutar en terminal: cat /tmp/daemon/daemon.pid
 
 LOG="/tmp/daemon.log"
-PIDFILE="/tmp/daemon/daemon.pid"
+PIDFILE=""  # Ahora se define dinámicamente
 
 
 #Funcion ayuda
@@ -112,7 +112,7 @@ daemon_loop() {
         escanear_archivo "$archivo" "$config" #Escanea un archivo
     done < <(                                                        #Aca avisan si se le hicieron cosas (inotify)
         inotifywait -q -m -r -e create -e modify -e moved_to -e close_write --exclude "$exclude" "$repo" --format '%w%f'    
-        #Y manda el archivo al while con el < <
+        #Y manda el archivo al while con el < 
     )
 }
 
@@ -167,7 +167,7 @@ while [[ $# -gt 0 ]]; do
         -r|--repo) REPO="$2";            shift 2 ;;
         -k|--kill) ACTION="stop";        shift 1 ;;
         -l|--log) LOG="$2";              shift 2 ;;
-        -h|--help) ayuda                 exit  0 ;;
+        -h|--help) ayuda;                exit  0 ;;
         *) echo "Uso: $0 [-c config] [-k] [-h]"; exit 1 ;;
     esac
 done
@@ -180,6 +180,13 @@ if ! command -v inotifywait &> /dev/null; then
 fi
 
 if [[ "$ACTION" == "stop" ]]; then
+    if [[ -z "$REPO" ]]; then
+        echo "Debe especificar el repositorio con -r para detener el daemon"
+        exit 1
+    fi
+    # Generar PIDFILE único para este repositorio
+    REPO_HASH=$(echo -n "$(realpath "$REPO")" | md5sum | cut -d' ' -f1)
+    PIDFILE="/tmp/daemon/daemon_${REPO_HASH}.pid"
     stop
     exit
 fi
@@ -204,8 +211,9 @@ if [[ ! -s "$CONFIG" ]]; then
     exit 1
 fi
 
-start "$REPO" "$CONFIG" 
-    exit 0
-fi
+#PIDFILE unico para este repo
+REPO_HASH=$(echo -n "$(realpath "$REPO")" | md5sum | cut -d' ' -f1)
+PIDFILE="/tmp/daemon/daemon_${REPO_HASH}.pid"
 
-start "$REPO" "$CONFIG" 
+start "$REPO" "$CONFIG"
+
