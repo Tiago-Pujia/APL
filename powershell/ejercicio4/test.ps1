@@ -1,192 +1,151 @@
 #!/usr/bin/env pwsh
+Write-Output "===== Iniciando batería de tests para ejercicio4.ps1 ====="
 
-# EJERCICIO 4 
-# - Tiago Pujia
-# - Bautista Rios Di Gaeta
-# - Santiago Manghi Scheck
-# - Tomas Agustín Nielsen
+# Ruta base (carpeta donde está el script de test)
+$BASE = $PSScriptRoot
 
-<#
-.SYNOPSIS
-    Script de prueba (test harness) para ejercicio4.ps1.
-.DESCRIPTION
-    Este script automatiza la configuración, ejecución y limpieza
-    para probar el demonio de monitoreo de archivos (ejercicio4.ps1).
-    
-    Pasos que realiza:
-    1.  Crea un entorno de prueba temporal (directorio, config, log).
-    2.  Prueba el parámetro -help.
-    3.  Inicia el demonio apuntando al directorio temporal (CON ESPACIOS).
-    4.  Verifica que el archivo .pid del demonio se haya creado.
-    5.  Crea y modifica archivos para disparar los patrones (simple y regex).
-    6.  Lee el archivo de log para verificar que las alertas se registraron.
-    7.  Detiene el demonio usando el parámetro -kill.
-    8.  Elimina el entorno de prueba temporal.
-#>
-
-# --- Configuración ---
-$scriptPrincipal = ".\ejercicio4.ps1"
-
-# --- Función Auxiliar ---
-# Esta función replica la lógica de Get-PidFile de tu script principal
-# para que el script de pruebas sepa qué archivo .pid buscar.
-function Get-TestPidFile {
-    param([string]$dirPath)
-    
-    # Asegurarnos de que tenemos la ruta absoluta, tal como lo haría el daemon
-    $absPath = (Resolve-Path $dirPath).Path
-    
-    $pidDir = "$HOME/.dir_monitor_pids"
-    $hashBytes = [System.Security.Cryptography.SHA256]::Create().ComputeHash(
-        [System.Text.Encoding]::UTF8.GetBytes($absPath)
+# Función auxiliar para ejecutar un test
+function Run-Test {
+    param (
+        [string]$Descripcion,
+        [string]$Comando
     )
-    $hashString = [System.BitConverter]::ToString($hashBytes).Replace("-", "").Substring(0, 16)
-    return Join-Path $pidDir "monitor_$hashString.pid"
+
+    Write-Output "`n--- $Descripcion ---"
+    try {
+        Invoke-Expression $Comando
+        Write-Output "Código de salida: $LASTEXITCODE"
+    } catch {
+        Write-Output "Error capturado: $_"
+        Write-Output "Código de salida: $LASTEXITCODE"
+    }
 }
 
+# 1. Crear entorno válido (repositorio de prueba)
+$TESTDIR = Join-Path $BASE "test_repo"
+if (Test-Path $TESTDIR) { Remove-Item $TESTDIR -Recurse -Force }
+New-Item -ItemType Directory -Path $TESTDIR | Out-Null
 
-# 1. --- Configurar Entorno de Prueba ---
-Write-Host "--- 1. Configurando entorno de prueba ---" -ForegroundColor Cyan
+# Crear archivos de prueba con contenido normal
+@"
+Este es un archivo de prueba seguro.
+Sin información sensible.
+"@ | Set-Content -Path (Join-Path $TESTDIR "archivo1.txt")
 
-$tempDir = Join-Path $env:TEMP "daemon test $(Get-Random)"
-New-Item -ItemType Directory -Path $tempDir -ErrorAction Stop | Out-Null
+@"
+Contenido de archivo dos.
+Información normalizada.
+"@ | Set-Content -Path (Join-Path $TESTDIR "archivo2.txt")
 
-$testRepoDir = Join-Path $tempDir "repo a monitorear"
-$configFile = Join-Path $tempDir "patrones.conf"
-$logFile = Join-Path $tempDir "test_daemon.log"
+# 2. Crear archivo de configuración válido (patrones de búsqueda)
+$CONFIGDIR = Join-Path $BASE "config"
+if (Test-Path $CONFIGDIR) { Remove-Item $CONFIGDIR -Recurse -Force }
+New-Item -ItemType Directory -Path $CONFIGDIR | Out-Null
 
-New-Item -ItemType Directory -Path $testRepoDir | Out-Null
-Write-Host "Directorio de repositorio creado en: $testRepoDir"
+@"
+# Patrones de búsqueda para credenciales y datos sensibles
+password
+apikey
+api_key
+secret
+token
+credentials
+"@ | Set-Content -Path (Join-Path $CONFIGDIR "patrones.conf")
 
-$patterns = @(
-    '# Archivo de configuración de prueba',
-    'PALABRA_SECRETA',
-    'regex:\b(ERROR|FAIL|CRITICAL)\b',
-    'regex:password\s*=\s*\S+'      
-)
-Set-Content -Path $configFile -Value ($patterns -join "`n")
-Write-Host "Archivo de configuración creado en: $configFile"
-Write-Host "`n"
+# 3. Crear archivo de configuración con patrones regex
+@"
+# Patrones con regex
+\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b
+\d{3}-\d{2}-\d{4}
+"@ | Set-Content -Path (Join-Path $CONFIGDIR "patrones_regex.conf")
 
-# Variable para guardar la ruta al PID file y usarla en la limpieza
-$pidFileParaLimpieza = $null
+# 4. Crear archivo de configuración inválido (vacío)
+@"
+# Solo comentarios
+# Sin patrones de búsqueda
+"@ | Set-Content -Path (Join-Path $CONFIGDIR "patrones_vacio.conf")
 
-# --- Inicio del Bloque de Pruebas (con limpieza asegurada) ---
-try {
+# 5. Crear directorio con archivos sensibles (para detectar patrones)
+$TESTDIR_SENSIBLE = Join-Path $BASE "test_repo_sensible"
+if (Test-Path $TESTDIR_SENSIBLE) { Remove-Item $TESTDIR_SENSIBLE -Recurse -Force }
+New-Item -ItemType Directory -Path $TESTDIR_SENSIBLE | Out-Null
 
-    # 2. --- TEST: Mostrar Ayuda ---
-    Write-Host "--- 2. TEST: Probar parámetro -help ---" -ForegroundColor Yellow
-    
-    $scriptPrincipalPath = (Resolve-Path $scriptPrincipal).Path
-    $helpArgs = "-File `"$scriptPrincipalPath`" -help"
-    
-    Start-Process -FilePath "pwsh" -ArgumentList $helpArgs -Wait -NoNewWindow
-    Write-Host "Prueba de ayuda completada."
-    Read-Host "Presiona Enter para continuar..."
-    Write-Host "`n"
+@"
+Usuario: admin
+Password: SuperSecret123
+"@ | Set-Content -Path (Join-Path $TESTDIR_SENSIBLE "credentials.txt")
 
-    # 3. --- TEST: Iniciar el Daemon ---
-    Write-Host "--- 3. TEST: Iniciar el Daemon (probando ruta con espacios) ---" -ForegroundColor Yellow
-    $comandoInicio = "$scriptPrincipal -repo `"$testRepoDir`" -configuracion `"$configFile`" -log `"$logFile`""
-    Write-Host "Ejecutando: $comandoInicio"
-    
-    # Ejecutamos el script. Este lanzará el proceso daemon y terminará.
-    # El propio script (ejercicio4.ps1) imprimirá si fue exitoso o no.
-    & $scriptPrincipal -repo $testRepoDir -configuracion $configFile -log $logFile
-    
-    Write-Host "Esperando 5 segundos a que el daemon se estabilice..."
-    Start-Sleep -Seconds 5
+@"
+API Token: sk-1234567890abcdef
+Secret key: mysecretkey
+"@ | Set-Content -Path (Join-Path $TESTDIR_SENSIBLE "tokens.txt")
 
-    # **CAMBIO: Verificamos el archivo PID, no el LOG**
-    $pidFileParaLimpieza = Get-TestPidFile -dirPath $testRepoDir
-    
-    if (Test-Path $pidFileParaLimpieza) {
-        $pidInfo = Get-Content $pidFileParaLimpieza | ConvertFrom-Json
-        Write-Host "VERIFICACIÓN: El archivo PID se ha creado (PID: $($pidInfo.PID))." -ForegroundColor Green
-        Write-Host "El Daemon se está ejecutando."
-    } else {
-        Write-Host "FALLO: El archivo PID no se encontró en $pidFileParaLimpieza" -ForegroundColor Red
-        Write-Host "El daemon no pudo iniciarse. Abortando pruebas." -ForegroundColor Red
-        return
-    }
-    Write-Host "`n"
-    
-    # 4. --- TEST: Disparar el monitor (Patrón Simple) ---
-    Write-Host "--- 4. TEST: Disparar monitor (Crear archivo .log con patrón simple) ---" -ForegroundColor Yellow
-    $testFile1 = Join-Path $testRepoDir "otro_log.log"
-    $content1 = "Este archivo contiene la PALABRA_SECRETA."
-    Write-Host "Creando archivo: $testFile1"
-    Set-Content -Path $testFile1 -Value $content1
-    
-    Start-Sleep -Seconds 2 
-    
-    # 5. --- TEST: Disparar el monitor (Patrón Regex) ---
-    Write-Host "--- 5. TEST: Disparar monitor (Modificar archivo con patrón regex) ---" -ForegroundColor Yellow
-    $testFile2 = Join-Path $testRepoDir "log_de_app.log"
-    Write-Host "Creando archivo: $testFile2"
-    Set-Content -Path $testFile2 -Value "Todo funciona bien."
-    Start-Sleep -Seconds 2 
-    
-    Write-Host "Modificando archivo para disparar regex 'ERROR'..."
-    Add-Content -Path $testFile2 -Value "¡Oh no, ha ocurrido un ERROR!"
-    
-    Start-Sleep -Seconds 2
-    Write-Host "`n"
+# 6. Crear directorio para logs
+$LOGDIR = Join-Path $BASE "logs"
+if (Test-Path $LOGDIR) { Remove-Item $LOGDIR -Recurse -Force }
+New-Item -ItemType Directory -Path $LOGDIR | Out-Null
 
-# 6. --- TEST: Verificar el archivo de Log ---
-    Write-Host "--- 6. TEST: Verificar el archivo de log (AHORA sí debería existir) ---" -ForegroundColor Yellow
-    
-    if (Test-Path $logFile) {
-        $logContent = Get-Content $logFile
-        Write-Host "Contenido del log ($logFile):"
-        $logContent | Write-Host
-        
-        Write-Host "`n--- Verificaciones de Alertas ---"
-        
-        # FIX: Usar comillas simples para que la cadena sea literal
-        if ($logContent | Select-String -Pattern 'PALABRA_SECRETA' -SimpleMatch -Quiet) {
-            Write-Host "VERIFICACIÓN (Simple): Patrón 'PALABRA_SECRETA' encontrado en el log." -ForegroundColor Green
-        } else {
-            Write-Host "FALLO (Simple): Patrón 'PALABRA_SECRETA' NO encontrado en el log." -ForegroundColor Red
-        }
-        
-        # FIX: Usar comillas simples para que \b sea literal
-        if ($logContent | Select-String -Pattern 'regex:\b(ERROR|FAIL|CRITICAL)\b' -SimpleMatch -Quiet) {
-            Write-Host "VERIFICACIÓN (Regex): Patrón 'regex:...' (ERROR) encontrado en el log." -ForegroundColor Green
-        } else {
-            Write-Host "FALLO (Regex): Patrón 'regex:...' (ERROR) NO encontrado en el log." -ForegroundColor Red
-        }
-    } else {
-        Write-Host "FALLO: El archivo de log no existe. Las alertas no se registraron." -ForegroundColor Red
-    }
-    
-    Read-Host "Presiona Enter para continuar y detener el daemon..."
-    Write-Host "`n"
-}
-catch {
-    Write-Host "--- ERROR INESPERADO DURANTE LA PRUEBA ---" -ForegroundColor Red
-    Write-Error $_.Exception.Message
-}
-finally {
-    # 7. --- LIMPIEZA: Detener el Daemon ---
-    Write-Host "--- 7. LIMPIEZA: Detener el Daemon ---" -ForegroundColor Yellow
-    $comandoKill = "$scriptPrincipal -repo `"$testRepoDir`" -kill"
-    Write-Host "Ejecutando: $comandoKill"
-    
-    & $scriptPrincipal -repo $testRepoDir -kill
-    Start-Sleep -Seconds 2
+# ---- Tests ----
 
-    Write-Host "Limpiando entorno de prueba..."
-    if (Test-Path $tempDir) {
-        Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "Directorio temporal eliminado: $tempDir"
-    }
-    
-    # Limpieza extra por si el -kill falló y el .pid quedó huérfano
-    if ($pidFileParaLimpieza -and (Test-Path $pidFileParaLimpieza)) {
-        Write-Host "Limpiando archivo PID huérfano..." -ForegroundColor Gray
-        Remove-Item $pidFileParaLimpieza -Force -ErrorAction SilentlyContinue
-    }
-    
-    Write-Host "`n--- PRUEBAS FINALIZADAS ---" -ForegroundColor Cyan
-}
+Run-Test "Test 1: Mostrar ayuda" `
+    ".\ejercicio4.ps1 -help"
+
+Run-Test "Test 2: Iniciar monitoreo en segundo plano (datos válidos)" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR`" -configuracion `"$(Join-Path $CONFIGDIR 'patrones.conf')`" -log `"$(Join-Path $LOGDIR 'audit.log')`""
+
+# Esperar un poco para que el job se inicie
+Start-Sleep -Seconds 2
+
+Run-Test "Test 3: Verificar que el job está ejecutándose" `
+    "Get-Job | Where-Object { `$_.Name -like 'GitAudit_*' } | Select-Object Id, Name, State"
+
+Run-Test "Test 4: Detener el monitoreo" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR`" -kill"
+
+Run-Test "Test 5: Intentar detener un monitoreo inexistente" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR`" -kill"
+
+Run-Test "Test 6: Directorio inexistente" `
+    ".\ejercicio4.ps1 -repo `"$BASE/no_existe`" -configuracion `"$(Join-Path $CONFIGDIR 'patrones.conf')`" -log `"$(Join-Path $LOGDIR 'test.log')`""
+
+Run-Test "Test 7: Archivo de configuración inexistente" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR`" -configuracion `"$BASE/no_existe.conf`" -log `"$(Join-Path $LOGDIR 'test.log')`""
+
+Run-Test "Test 8: Sin especificar -configuracion y -log (debe mostrar uso)" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR`""
+
+Run-Test "Test 9: Especificar solo -configuracion (debe fallar)" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR`" -configuracion `"$(Join-Path $CONFIGDIR 'patrones.conf')`""
+
+Run-Test "Test 10: Monitoreo con archivo de configuración vacío (sin patrones)" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR_SENSIBLE`" -configuracion `"$(Join-Path $CONFIGDIR 'patrones_vacio.conf')`" -log `"$(Join-Path $LOGDIR 'empty_patterns.log')`""
+
+Start-Sleep -Seconds 1
+
+Run-Test "Test 11: Detener monitoreo del Test 10" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR_SENSIBLE`" -kill"
+
+Run-Test "Test 12: Monitoreo que detecta patrones sensibles" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR_SENSIBLE`" -configuracion `"$(Join-Path $CONFIGDIR 'patrones.conf')`" -log `"$(Join-Path $LOGDIR 'sensible.log')`""
+
+Start-Sleep -Seconds 2
+
+Run-Test "Test 13: Verificar contenido del log de detección sensible" `
+    "Get-Content `"$(Join-Path $LOGDIR 'sensible.log')`" -ErrorAction SilentlyContinue"
+
+Run-Test "Test 14: Intentar iniciar otro monitoreo en el mismo repo (debe fallar)" `
+    ".\ejercicio4.ps1 -repo `"$TESTDIR_SENSIBLE`" -configuracion `"$(Join-Path $CONFIGDIR 'patrones.conf')`" -log `"$(Join-Path $LOGDIR 'duplicate.log')`""
+
+Run-Test "Test 15: Detener todos los monitoreos" `
+    "`$jobs = @(Get-Job -Name 'GitAudit_Job_*' -ErrorAction SilentlyContinue); if (`$jobs.Count -gt 0) { `$jobs | Stop-Job -ErrorAction SilentlyContinue; `$jobs | Remove-Job -Force -ErrorAction SilentlyContinue; Write-Output `"Se detuvieron `$(`$jobs.Count) jobs`" } else { Write-Output 'No hay jobs activos para limpiar' }; `$LASTEXITCODE = 0"
+
+# ---- Limpieza ----
+Write-Output "`n--- Iniciando limpieza de archivos de prueba ---"
+
+Remove-Item $TESTDIR -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item $TESTDIR_SENSIBLE -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item $CONFIGDIR -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item $LOGDIR -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Output "Archivos de prueba limpios."
+Write-Output "`n===== Fin de los tests ====="

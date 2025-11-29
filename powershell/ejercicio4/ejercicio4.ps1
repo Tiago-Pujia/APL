@@ -102,12 +102,12 @@ try {
         if ($job) {
             Stop-Job -Name $jobName -ErrorAction SilentlyContinue
             Remove-Job -Name $jobName -Force -ErrorAction SilentlyContinue
-            Write-Host "`n✓ Monitoreo detenido exitosamente." -ForegroundColor Green
+            Write-Host "`n Monitoreo detenido exitosamente." -ForegroundColor Green
             Write-Host "  Directorio: $absoluteRepoPath" -ForegroundColor Cyan
             Write-Host "  Job '$jobName' eliminado." -ForegroundColor Cyan
             Write-Host "  Los logs se mantienen intactos.`n" -ForegroundColor Yellow
         } else {
-            Write-Host "`n⚠ No se encontró monitoreo activo para el directorio: $absoluteRepoPath" -ForegroundColor Yellow
+            Write-Host "`n No se encontró monitoreo activo para el directorio: $absoluteRepoPath" -ForegroundColor Yellow
             Write-Host "  Tip: Use 'Get-Job' para ver todos los jobs activos.`n" -ForegroundColor DarkGray
         }
         
@@ -134,7 +134,7 @@ try {
         # Verificar si ya existe un job corriendo para este directorio
         $existingJob = Get-Job -Name $jobName -ErrorAction SilentlyContinue
         if ($existingJob) {
-            Write-Host "`n✗ Ya existe un monitoreo activo para este directorio." -ForegroundColor Red
+            Write-Host "`n Ya existe un monitoreo activo para este directorio." -ForegroundColor Red
             Write-Host "  Directorio: $absoluteRepoPath" -ForegroundColor Cyan
             Write-Host "  Job Name:   $jobName" -ForegroundColor Cyan
             Write-Host "  Estado:     $($existingJob.State)" -ForegroundColor Yellow
