@@ -75,23 +75,24 @@ escanear_archivo() {
         patron="$(echo -n "$patron" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" #Limpieza horrenda
        
         [[ -z "$patron" ]] && continue #Linea vacia
+        [[ "$patron" =~ ^# ]] && continue #Comentarios
         
-        # Si aparece al menos una vez, loguear UNA SOLA VEZ por archivo
-
         #regex
         if [[ "$patron" == regex:* ]]; then
             # Quitar el prefijo "regex:"
             patron="${patron#regex:}"
-            if LC_ALL=C grep -qE -- "$patron" "$archivo" 2>/dev/null; then
+            # Buscar case-insensitive con grep -i y capturar todas las líneas que coinciden
+            while IFS= read -r linea; do
                 printf '[%s] %s\n' "$(date +"%Y-%m-%d %T")" \
                 "Alerta: patrón '$patron' encontrado en el archivo $archivo" >> "$LOG"
-            fi
+            done < <(grep -iE -- "$patron" "$archivo" 2>/dev/null)
         else
-        #no regex
-            if LC_ALL=C grep -qF -- "$patron" "$archivo" 2>/dev/null; then
+        #no regex - búsqueda case-insensitive con grep -F -i
+            # Buscar case-insensitive y capturar todas las líneas que coinciden
+            while IFS= read -r linea; do
                 printf '[%s] %s\n' "$(date +"%Y-%m-%d %T")" \
                 "Alerta: patrón '$patron' encontrado en el archivo $archivo" >> "$LOG"
-            fi
+            done < <(grep -iF -- "$patron" "$archivo" 2>/dev/null)
         fi
     done < "$config_file"
 }
