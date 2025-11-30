@@ -26,20 +26,20 @@ cat logs_prueba/sistema2.log
 echo -e "\n===== TEST 1: ejecución normal ====="
 ./ejercicio3.sh -d logs_prueba -p "Error,Advertencia"
 
-echo -e "\n===== TEST 2: solo errores ====="
+echo -e "\n===== TEST 2: solo errores (debe fallar) ====="
 ./ejercicio3.sh -d logs_prueba -p "Error"
 
 echo -e "\n===== TEST 3: ayuda ====="
 ./ejercicio3.sh -h
 
-echo -e "\n===== TEST 4: parámetros inválidos ====="
+echo -e "\n===== TEST 4: parámetros inválidos (debe fallar) ====="
 ./ejercicio3.sh -x
 
-echo -e "\n===== TEST 5: directorio vacío ====="
+echo -e "\n===== TEST 5: directorio vacío (debe fallar) ====="
 mkdir -p logs_vacio
 ./ejercicio3.sh -d logs_vacio -p "Error,Advertencia"
 
-echo -e "\n===== TEST 6: directorio inexistente ====="
+echo -e "\n===== TEST 6: directorio inexistente (debe fallar) ====="
 ./ejercicio3.sh -d no_existe -p "Error"
 
 echo -e "\n===== TEST 7: palabras que no aparecen ====="
