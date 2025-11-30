@@ -44,16 +44,16 @@ run_test "Test 1: salida por pantalla (datos válidos)" \
 run_test "Test 2: salida a archivo (datos válidos)" \
     ./ejercicio1.sh -d "$TESTDIR" -a resultados.json
 
-run_test "Test 3: directorio inexistente" \
+run_test "Test 3: directorio inexistente (debe fallar)" \
     ./ejercicio1.sh -d "$BASE/no_existe" -p
 
-run_test "Test 4: datos inválidos (formato y valores no numéricos)" \
+run_test "Test 4: datos inválidos (debe fallar)" \
     ./ejercicio1.sh -d "$TESTDIR_INV" -p
 
-run_test "Test 5: sin especificar -a ni -p" \
+run_test "Test 5: sin especificar -a ni -p (debe fallar)" \
     ./ejercicio1.sh -d "$TESTDIR"
 
-run_test "Test 6: usar -a y -p al mismo tiempo" \
+run_test "Test 6: usar -a y -p al mismo tiempo (debe fallar)" \
     ./ejercicio1.sh -d "$TESTDIR" -p -a resultados.json
 
 run_test "Test 7: mostrar ayuda con -h" \

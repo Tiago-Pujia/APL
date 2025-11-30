@@ -105,10 +105,10 @@ Run-Test "Test 4: Detener el monitoreo" `
 Run-Test "Test 5: Intentar detener un monitoreo inexistente" `
     ".\ejercicio4.ps1 -repo `"$TESTDIR`" -kill"
 
-Run-Test "Test 6: Directorio inexistente" `
+Run-Test "Test 6: Directorio inexistente (debe fallar)" `
     ".\ejercicio4.ps1 -repo `"$BASE/no_existe`" -configuracion `"$(Join-Path $CONFIGDIR 'patrones.conf')`" -log `"$(Join-Path $LOGDIR 'test.log')`""
 
-Run-Test "Test 7: Archivo de configuración inexistente" `
+Run-Test "Test 7: Archivo de configuración inexistente (debe fallar)" `
     ".\ejercicio4.ps1 -repo `"$TESTDIR`" -configuracion `"$BASE/no_existe.conf`" -log `"$(Join-Path $LOGDIR 'test.log')`""
 
 Run-Test "Test 8: Sin especificar -configuracion y -log (debe mostrar uso)" `
